@@ -51,6 +51,8 @@ serve(async (req) => {
     }
 
     // 3. Check if user has admin role
+    console.log('Checking admin role for user:', user.id);
+    
     const { data: roleData, error: roleError } = await supabaseClient
       .from('user_roles')
       .select('role')
@@ -58,13 +60,22 @@ serve(async (req) => {
       .eq('role', 'admin')
       .maybeSingle();
 
+    console.log('Role check result:', { roleData, roleError, userId: user.id });
+
     if (roleError || !roleData) {
-      console.error('Authorization error:', roleError);
+      console.error('Authorization failed:', {
+        hasError: !!roleError,
+        errorMessage: roleError?.message,
+        hasData: !!roleData,
+        userId: user.id
+      });
       return new Response(
         JSON.stringify({ success: false, error: 'Unauthorized - admin role required' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    
+    console.log('Admin authorization confirmed for user:', user.id);
 
     // 4. Parse and validate request body
     const { sheetsUrl, eventId } = await req.json();

@@ -8,6 +8,7 @@ interface AuthContextType {
   isAdmin: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  refreshAdminStatus: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -66,8 +67,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   };
 
+  const refreshAdminStatus = async () => {
+    if (user) {
+      await checkAdminRole(user.id);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, isAdmin, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, loading, isAdmin, signIn, signOut, refreshAdminStatus }}>
       {children}
     </AuthContext.Provider>
   );
