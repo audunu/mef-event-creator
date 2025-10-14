@@ -11,6 +11,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { InfoSectionManager } from '@/components/InfoSectionManager';
+import { MapUploader } from '@/components/MapUploader';
 
 interface EventData {
   name: string;
@@ -389,6 +391,16 @@ export default function EventEditor() {
               )}
             </CardContent>
           </Card>
+        )}
+
+        {/* Praktisk Info Management */}
+        {formData.enable_info && id !== 'new' && (
+          <InfoSectionManager eventId={id} />
+        )}
+
+        {/* Kart Upload */}
+        {formData.enable_map && id !== 'new' && (
+          <MapUploader eventId={id} />
         )}
 
         {/* Save buttons */}
