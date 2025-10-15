@@ -264,6 +264,27 @@ export default function EventEditor() {
                 Publiser arrangement (gjør det synlig for alle)
               </Label>
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="public_url">Offentlig URL</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="public_url"
+                  value={`${window.location.origin}/events/${formData.slug}`}
+                  readOnly
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}/events/${formData.slug}`);
+                    toast.success('URL kopiert!');
+                  }}
+                >
+                  Kopier
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
