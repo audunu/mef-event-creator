@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface Event {
   id: string;
@@ -94,7 +95,9 @@ export default function EventInfo() {
                 </CardHeader>
                 <CardContent>
                   <div className="prose prose-sm max-w-none">
-                    <ReactMarkdown>{section.content || ''}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {section.content || ''}
+                    </ReactMarkdown>
                   </div>
                 </CardContent>
               </Card>

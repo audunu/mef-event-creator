@@ -11,6 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Pencil, Trash2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface InfoSection {
   id: string;
@@ -218,7 +219,9 @@ export function InfoSectionManager({ eventId }: InfoSectionManagerProps) {
                   <TabsContent value="preview">
                     <div className="min-h-[200px] p-4 border rounded-md prose prose-sm max-w-none">
                       {formData.content ? (
-                        <ReactMarkdown>{formData.content}</ReactMarkdown>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {formData.content}
+                        </ReactMarkdown>
                       ) : (
                         <p className="text-muted-foreground">Ingen innhold å vise</p>
                       )}
