@@ -5,8 +5,7 @@ import { MEFLogo } from '@/components/MEFLogo';
 import { BottomNav } from '@/components/BottomNav';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ArrowLeft, ChevronDown } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 interface Event {
@@ -31,7 +30,6 @@ export default function EventInfo() {
   const navigate = useNavigate();
   const [event, setEvent] = useState<Event | null>(null);
   const [sections, setSections] = useState<InfoSection[]>([]);
-  const [openSections, setOpenSections] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -58,12 +56,6 @@ export default function EventInfo() {
       setSections(infoData || []);
     }
     setLoading(false);
-  };
-
-  const toggleSection = (id: string) => {
-    setOpenSections(prev =>
-      prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
-    );
   };
 
   if (loading) {
@@ -94,33 +86,18 @@ export default function EventInfo() {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {sections.map((section) => (
-              <Collapsible
-                key={section.id}
-                open={openSections.includes(section.id)}
-                onOpenChange={() => toggleSection(section.id)}
-              >
-                <Card>
-                  <CollapsibleTrigger className="w-full">
-                    <CardHeader className="flex flex-row items-center justify-between py-4">
-                      <CardTitle className="text-base text-left">{section.title}</CardTitle>
-                      <ChevronDown
-                        className={`h-5 w-5 text-muted-foreground transition-transform ${
-                          openSections.includes(section.id) ? 'rotate-180' : ''
-                        }`}
-                      />
-                    </CardHeader>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <CardContent className="pt-0">
-                      <div className="prose prose-sm max-w-none">
-                        <ReactMarkdown>{section.content || ''}</ReactMarkdown>
-                      </div>
-                    </CardContent>
-                  </CollapsibleContent>
-                </Card>
-              </Collapsible>
+              <Card key={section.id}>
+                <CardHeader>
+                  <CardTitle className="text-lg">{section.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="prose prose-sm max-w-none">
+                    <ReactMarkdown>{section.content || ''}</ReactMarkdown>
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         )}
