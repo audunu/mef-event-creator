@@ -13,6 +13,7 @@ import { ArrowLeft, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { InfoSectionManager } from '@/components/InfoSectionManager';
 import { MapUploader } from '@/components/MapUploader';
+import { HeroImageUploader } from '@/components/HeroImageUploader';
 
 interface EventData {
   name: string;
@@ -245,15 +246,20 @@ export default function EventEditor() {
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="hero_image">Hovedbilde URL</Label>
-              <Input
-                id="hero_image"
-                value={formData.hero_image_url}
-                onChange={(e) => setFormData({ ...formData, hero_image_url: e.target.value })}
-                placeholder="https://..."
-              />
-            </div>
+            {id !== 'new' ? (
+              <div className="space-y-2">
+                <Label>Hovedbilde</Label>
+                <HeroImageUploader
+                  eventId={id}
+                  currentImageUrl={formData.hero_image_url}
+                  onImageUpdate={(newUrl) => setFormData({ ...formData, hero_image_url: newUrl })}
+                />
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Lagre arrangementet først for å kunne laste opp hovedbilde
+              </p>
+            )}
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="published"
