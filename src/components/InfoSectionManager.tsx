@@ -5,13 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Pencil, Trash2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 
 interface InfoSection {
   id: string;
@@ -201,33 +199,24 @@ export function InfoSectionManager({ eventId }: InfoSectionManagerProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="content">Innhold (støtter Markdown)</Label>
-                <Tabs defaultValue="edit" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="edit">Rediger</TabsTrigger>
-                    <TabsTrigger value="preview">Forhåndsvisning</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="edit">
-                    <Textarea
-                      id="content"
-                      value={formData.content}
-                      onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                      placeholder="Skriv innhold her. Du kan bruke Markdown-formatering."
-                      className="min-h-[200px]"
-                    />
-                  </TabsContent>
-                  <TabsContent value="preview">
-                    <div className="min-h-[200px] p-4 border rounded-md prose prose-sm max-w-none">
-                      {formData.content ? (
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                          {formData.content}
-                        </ReactMarkdown>
-                      ) : (
-                        <p className="text-muted-foreground">Ingen innhold å vise</p>
-                      )}
-                    </div>
-                  </TabsContent>
-                </Tabs>
+                <Label htmlFor="content">Innhold</Label>
+                <ReactQuill
+                  theme="snow"
+                  value={formData.content}
+                  onChange={(value) => setFormData({ ...formData, content: value })}
+                  placeholder="Skriv innhold her..."
+                  className="bg-background"
+                  modules={{
+                    toolbar: [
+                      [{ 'header': [1, 2, 3, false] }],
+                      ['bold', 'italic', 'underline', 'strike'],
+                      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                      [{ 'align': [] }],
+                      ['link'],
+                      ['clean']
+                    ],
+                  }}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="order">Rekkefølge (valgfritt)</Label>

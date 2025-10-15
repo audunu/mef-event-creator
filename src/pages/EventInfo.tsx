@@ -6,8 +6,7 @@ import { BottomNav } from '@/components/BottomNav';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import parse from 'html-react-parser';
 
 interface Event {
   id: string;
@@ -95,9 +94,7 @@ export default function EventInfo() {
                 </CardHeader>
                 <CardContent>
                   <div className="prose prose-sm max-w-none">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {section.content || ''}
-                    </ReactMarkdown>
+                    {parse(section.content || '')}
                   </div>
                 </CardContent>
               </Card>
