@@ -140,7 +140,7 @@ export default function AdminDashboard() {
                     variant="outline" 
                     size="sm" 
                     className="flex-1"
-                    onClick={() => navigate(`/admin/events/${event.id}/edit`)}
+                    onClick={() => navigate(`/admin/events/${event.id}`)}
                   >
                     <Edit className="h-4 w-4 mr-2" />
                     Rediger

@@ -29,8 +29,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/admin/login" element={<AdminLogin />} />
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
-            <Route path="/admin/events/new" element={<EventEditor />} />
-            <Route path="/admin/events/:id/edit" element={<EventEditor />} />
+            <Route path="/admin/events/:id" element={<EventEditor />} />
             <Route path="/events/:slug" element={<EventHome />} />
             <Route path="/events/:slug/program" element={<EventProgram />} />
             <Route path="/events/:slug/participants" element={<EventParticipants />} />

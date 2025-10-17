@@ -137,7 +137,7 @@ export default function EventEditor() {
     } else {
       toast.success('Arrangement lagret');
       if (id === 'new') {
-        navigate(`/admin/events/${result.data.id}/edit`);
+        navigate(`/admin/events/${result.data.id}`);
       }
     }
 
