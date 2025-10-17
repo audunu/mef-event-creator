@@ -246,7 +246,7 @@ export default function EventEditor() {
                 />
               </div>
             </div>
-            {id !== 'new' ? (
+            {id && id !== 'new' ? (
               <div className="space-y-2">
                 <Label>Hovedbilde</Label>
                 <HeroImageUploader
