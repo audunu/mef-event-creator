@@ -16,6 +16,109 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024;
 // Max rows per sheet
 const MAX_ROWS = 10000;
 
+// Helper function to parse flexible date formats
+function parseFlexibleDate(dateStr: string | null | undefined): string | null {
+  if (!dateStr) return null;
+  
+  const trimmed = String(dateStr).trim();
+  if (!trimmed) return null;
+  
+  console.log(`Parsing date: "${trimmed}"`);
+  
+  // Try ISO format first (YYYY-MM-DD)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+  
+  // Try DD/MM/YYYY or DD.MM.YYYY or DD-MM-YYYY
+  const ddmmyyyyMatch = trimmed.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+  if (ddmmyyyyMatch) {
+    const [, day, month, year] = ddmmyyyyMatch;
+    const isoDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    console.log(`Converted ${trimmed} to ${isoDate}`);
+    return isoDate;
+  }
+  
+  // Try YYYY/MM/DD or YYYY.MM.DD
+  const yyyymmddMatch = trimmed.match(/^(\d{4})[./-](\d{1,2})[./-](\d{1,2})$/);
+  if (yyyymmddMatch) {
+    const [, year, month, day] = yyyymmddMatch;
+    const isoDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    console.log(`Converted ${trimmed} to ${isoDate}`);
+    return isoDate;
+  }
+  
+  // Try parsing as a timestamp/date object
+  try {
+    const parsed = new Date(trimmed);
+    if (!isNaN(parsed.getTime())) {
+      const isoDate = parsed.toISOString().split('T')[0];
+      console.log(`Parsed ${trimmed} as Date object to ${isoDate}`);
+      return isoDate;
+    }
+  } catch (e) {
+    console.warn(`Could not parse date: "${trimmed}"`);
+  }
+  
+  console.warn(`Failed to parse date: "${trimmed}"`);
+  return null;
+}
+
+// Helper function to parse flexible time formats
+function parseFlexibleTime(timeStr: string | null | undefined): string | null {
+  if (!timeStr) return null;
+  
+  const trimmed = String(timeStr).trim();
+  if (!trimmed) return null;
+  
+  console.log(`Parsing time: "${trimmed}"`);
+  
+  // Try HH:MM format (already valid)
+  if (/^\d{1,2}:\d{2}$/.test(trimmed)) {
+    const [hours, minutes] = trimmed.split(':');
+    const formatted = `${hours.padStart(2, '0')}:${minutes}`;
+    console.log(`Time already valid, formatted: ${formatted}`);
+    return formatted;
+  }
+  
+  // Try HH.MM format (with dot separator)
+  const dotMatch = trimmed.match(/^(\d{1,2})\.(\d{2})$/);
+  if (dotMatch) {
+    const [, hours, minutes] = dotMatch;
+    const formatted = `${hours.padStart(2, '0')}:${minutes}`;
+    console.log(`Converted ${trimmed} to ${formatted}`);
+    return formatted;
+  }
+  
+  // Try HHMM format (no separator)
+  const noSepMatch = trimmed.match(/^(\d{1,2})(\d{2})$/);
+  if (noSepMatch) {
+    const [, hours, minutes] = noSepMatch;
+    const formatted = `${hours.padStart(2, '0')}:${minutes}`;
+    console.log(`Converted ${trimmed} to ${formatted}`);
+    return formatted;
+  }
+  
+  // Try with seconds HH:MM:SS
+  const withSecondsMatch = trimmed.match(/^(\d{1,2}):(\d{2}):\d{2}$/);
+  if (withSecondsMatch) {
+    const [, hours, minutes] = withSecondsMatch;
+    const formatted = `${hours.padStart(2, '0')}:${minutes}`;
+    console.log(`Converted ${trimmed} to ${formatted}`);
+    return formatted;
+  }
+  
+  console.warn(`Failed to parse time: "${trimmed}"`);
+  return null;
+}
+
+// Helper to safely get and trim string value
+function getTrimmed(value: any): string | null {
+  if (value === null || value === undefined || value === '') return null;
+  const str = String(value).trim();
+  return str === '' ? null : str;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -172,16 +275,53 @@ serve(async (req) => {
       const programItems = programData.data
         .filter((row: any) => row && Object.keys(row).length > 0)
         .slice(0, MAX_ROWS)
-        .map((row: any, idx: number) => ({
-        event_id: eventId,
-        external_id: `p${idx + 1}`,
-        day: row.dag || row.Dag || row.day || row.Day,
-        start_time: row.start || row.Start,
-        end_time: row.end || row.End || null,
-        title: row.tittel || row.Tittel || row.title || row.Title,
-        description: row.beskrivelse || row.Beskrivelse || row.description || row.Description || null,
-        location: row.sted || row.Sted || row.location || row.Location || null,
-      }));
+        .map((row: any, idx: number) => {
+          const rowNum = idx + 1;
+          console.log(`Processing Program row ${rowNum}:`, row);
+          
+          // Get raw values with multiple column name fallbacks
+          const dayRaw = getTrimmed(row.dag || row.Dag || row.day || row.Day);
+          const startRaw = getTrimmed(row.start || row.Start);
+          const endRaw = getTrimmed(row.end || row.End);
+          const titleRaw = getTrimmed(row.tittel || row.Tittel || row.title || row.Title);
+          const descriptionRaw = getTrimmed(row.beskrivelse || row.Beskrivelse || row.description || row.Description);
+          const locationRaw = getTrimmed(row.sted || row.Sted || row.location || row.Location);
+          
+          // Parse and validate
+          const day = parseFlexibleDate(dayRaw);
+          const start_time = parseFlexibleTime(startRaw);
+          const end_time = parseFlexibleTime(endRaw);
+          
+          // Log validation results
+          if (!day) {
+            console.warn(`Row ${rowNum}: Failed to parse day "${dayRaw}"`);
+          }
+          if (!start_time) {
+            console.warn(`Row ${rowNum}: Failed to parse start_time "${startRaw}"`);
+          }
+          if (!titleRaw) {
+            console.warn(`Row ${rowNum}: Missing required title`);
+          }
+          
+          return {
+            event_id: eventId,
+            external_id: `p${rowNum}`,
+            day: day,
+            start_time: start_time,
+            end_time: end_time,
+            title: titleRaw || 'Untitled',
+            description: descriptionRaw,
+            location: locationRaw,
+          };
+        })
+        .filter((item: any) => {
+          // Only include items that have minimum required fields
+          if (!item.day || !item.start_time || !item.title || item.title === 'Untitled') {
+            console.warn(`Skipping invalid program item: ${JSON.stringify(item)}`);
+            return false;
+          }
+          return true;
+        });
       
       const { error } = await supabase.from('program_items').insert(programItems);
       if (error) throw error;
@@ -227,12 +367,31 @@ serve(async (req) => {
       const participants = participantsData.data
         .filter((row: any) => row && Object.keys(row).length > 0)
         .slice(0, MAX_ROWS)
-        .map((row: any, idx: number) => ({
-        event_id: eventId,
-        external_id: `d${idx + 1}`,
-        name: row.navn || row.Navn || row.name || row.Name,
-        company: row.bedrift || row.Bedrift || row.company || row.Company || null,
-      }));
+        .map((row: any, idx: number) => {
+          const rowNum = idx + 1;
+          console.log(`Processing Participant row ${rowNum}:`, row);
+          
+          const nameRaw = getTrimmed(row.navn || row.Navn || row.name || row.Name);
+          const companyRaw = getTrimmed(row.bedrift || row.Bedrift || row.company || row.Company);
+          
+          if (!nameRaw) {
+            console.warn(`Row ${rowNum}: Missing required name`);
+          }
+          
+          return {
+            event_id: eventId,
+            external_id: `d${rowNum}`,
+            name: nameRaw || 'Unknown',
+            company: companyRaw,
+          };
+        })
+        .filter((item: any) => {
+          if (!item.name || item.name === 'Unknown') {
+            console.warn(`Skipping invalid participant: ${JSON.stringify(item)}`);
+            return false;
+          }
+          return true;
+        });
       
       const { error } = await supabase.from('participants').insert(participants);
       if (error) throw error;
@@ -278,12 +437,31 @@ serve(async (req) => {
       const exhibitors = exhibitorsData.data
         .filter((row: any) => row && Object.keys(row).length > 0)
         .slice(0, MAX_ROWS)
-        .map((row: any, idx: number) => ({
-        event_id: eventId,
-        external_id: `u${idx + 1}`,
-        company_name: row.bedriftsnavn || row.Bedriftsnavn || row.company || row.Company,
-        stand_number: row.standnummer || row.Standnummer || row.stand || row.Stand || null,
-      }));
+        .map((row: any, idx: number) => {
+          const rowNum = idx + 1;
+          console.log(`Processing Exhibitor row ${rowNum}:`, row);
+          
+          const companyRaw = getTrimmed(row.bedriftsnavn || row.Bedriftsnavn || row.company || row.Company);
+          const standRaw = getTrimmed(row.standnummer || row.Standnummer || row.stand || row.Stand);
+          
+          if (!companyRaw) {
+            console.warn(`Row ${rowNum}: Missing required company_name`);
+          }
+          
+          return {
+            event_id: eventId,
+            external_id: `u${rowNum}`,
+            company_name: companyRaw || 'Unknown Company',
+            stand_number: standRaw,
+          };
+        })
+        .filter((item: any) => {
+          if (!item.company_name || item.company_name === 'Unknown Company') {
+            console.warn(`Skipping invalid exhibitor: ${JSON.stringify(item)}`);
+            return false;
+          }
+          return true;
+        });
       
       const { error } = await supabase.from('exhibitors').insert(exhibitors);
       if (error) throw error;
