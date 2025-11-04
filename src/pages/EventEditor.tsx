@@ -409,7 +409,10 @@ export default function EventEditor() {
                           <li>Finn malen "MEF mal (lag en kopi av denne for å opprette ny arrangementsdatabase)"</li>
                           <li>Høyreklikk på malen og velg "Lag en kopi"</li>
                           <li>Gi kopien et beskrivende navn (f.eks. "Loendagene 2026 Data")</li>
-                          <li>Åpne den nye kopien</li>
+                          <li>Høyreklikk på kopien i Google Drive og velg "Del"</li>
+                          <li>Under "Generell tilgang", velg "Alle med linken" og sett til "Leser"</li>
+                          <li>Klikk "Ferdig"</li>
+                          <li>Åpne kopien</li>
                           <li>Kopier lenken fra adressefeltet i nettleseren</li>
                           <li>Lim inn lenken i feltet over</li>
                           <li>Klikk "Synkroniser alle moduler"</li>
@@ -424,8 +427,12 @@ export default function EventEditor() {
                       <div className="rounded-md bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 p-3">
                         <p className="font-medium text-blue-900 dark:text-blue-100">💡 Tips:</p>
                         <p className="mt-1 text-blue-800 dark:text-blue-200 text-xs">
-                          Hvis synkroniseringen ikke fungerer, sjekk at du er pålogget riktig Google-konto.
+                          Hvis synkroniseringen ikke fungerer, sjekk at:
                         </p>
+                        <ol className="mt-1 ml-4 space-y-1 list-decimal text-blue-800 dark:text-blue-200 text-xs">
+                          <li>Du er pålogget riktig Google-konto (mef.arrangementer@gmail.com)</li>
+                          <li>Delingstillatelsene er satt til minst "Alle med linken kan se" (høyreklikk på filen i Drive og velg "Del")</li>
+                        </ol>
                       </div>
                     </div>
                   </CollapsibleContent>
