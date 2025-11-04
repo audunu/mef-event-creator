@@ -9,11 +9,12 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { ArrowLeft, Loader2, CheckCircle2, XCircle, HelpCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { InfoSectionManager } from '@/components/InfoSectionManager';
 import { MapUploader } from '@/components/MapUploader';
 import { HeroImageUploader } from '@/components/HeroImageUploader';
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 
 interface EventData {
   name: string;
@@ -39,6 +40,7 @@ export default function EventEditor() {
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<any>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
   
   const [formData, setFormData] = useState<EventData>({
     name: '',
@@ -355,13 +357,79 @@ export default function EventEditor() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="sheets_url">Google Sheets URL</Label>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="sheets_url">Google Sheets URL</Label>
+                  <Collapsible open={helpOpen} onOpenChange={setHelpOpen}>
+                    <CollapsibleTrigger asChild>
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-6 w-6 p-0"
+                        aria-label="Hjelp"
+                      >
+                        <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </CollapsibleTrigger>
+                  </Collapsible>
+                </div>
                 <Input
                   id="sheets_url"
                   value={formData.google_sheets_url}
                   onChange={(e) => setFormData({ ...formData, google_sheets_url: e.target.value })}
                   placeholder="https://docs.google.com/spreadsheets/d/..."
                 />
+                <Collapsible open={helpOpen} onOpenChange={setHelpOpen}>
+                  <CollapsibleContent className="mt-3">
+                    <div className="rounded-lg border bg-card p-4 space-y-4 text-sm">
+                      <h3 className="font-semibold text-base">Hvordan sette opp Google Sheets</h3>
+                      
+                      <div className="rounded-md bg-amber-50 dark:bg-amber-950/20 border-l-4 border-amber-500 p-3">
+                        <p className="font-semibold flex items-start gap-2">
+                          <span className="text-amber-600">⚠️</span>
+                          <span>VIKTIG:</span>
+                        </p>
+                        <p className="mt-1 text-muted-foreground">
+                          Du må være pålogget <strong>mef.arrangementer@gmail.com</strong> for å få tilgang til malen. 
+                          Kontakt Audun for å få passord til denne kontoen.
+                        </p>
+                        <p className="mt-2 text-muted-foreground text-xs">
+                          Sørg for at du er pålogget riktig Google-konto før du starter. 
+                          Hvis du har flere Google-kontoer, kan du sjekke hvilken konto du er pålogget på 
+                          ved å se på profilikonet øverst til høyre i Google. 
+                          Hvis du er pålogget feil konto, logg ut og logg inn på mef.arrangementer@gmail.com først.
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <p className="font-medium">Steg:</p>
+                        <ol className="space-y-2 list-decimal list-inside text-muted-foreground">
+                          <li>Logg inn på mef.arrangementer@gmail.com</li>
+                          <li>Gå til Google Drive: <a href="https://drive.google.com" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:no-underline">https://drive.google.com</a></li>
+                          <li>Finn malen "MEF mal (lag en kopi av denne for å opprette ny arrangementsdatabase)"</li>
+                          <li>Høyreklikk på malen og velg "Lag en kopi"</li>
+                          <li>Gi kopien et beskrivende navn (f.eks. "Loendagene 2026 Data")</li>
+                          <li>Åpne den nye kopien</li>
+                          <li>Kopier lenken fra adressefeltet i nettleseren</li>
+                          <li>Lim inn lenken i feltet over</li>
+                          <li>Klikk "Synkroniser alle moduler"</li>
+                        </ol>
+                      </div>
+
+                      <p className="text-muted-foreground">
+                        Nå kan du begynne å fylle inn data i arkene "Program", "Deltakere" og "Utstillere" i Google Sheets. 
+                        Dataene vil automatisk vises i appen når du synkroniserer.
+                      </p>
+
+                      <div className="rounded-md bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 p-3">
+                        <p className="font-medium text-blue-900 dark:text-blue-100">💡 Tips:</p>
+                        <p className="mt-1 text-blue-800 dark:text-blue-200 text-xs">
+                          Hvis synkroniseringen ikke fungerer, sjekk at du er pålogget riktig Google-konto.
+                        </p>
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
               </div>
               <Button onClick={handleSync} disabled={syncing || !formData.google_sheets_url}>
                 {syncing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
