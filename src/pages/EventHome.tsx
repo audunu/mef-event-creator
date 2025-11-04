@@ -104,11 +104,11 @@ export default function EventHome() {
       </header>
 
       {event.hero_image_url && (
-        <div className="w-full aspect-[16/9] max-h-[400px] bg-muted overflow-hidden">
+        <div className="w-full h-[200px] md:h-[350px] lg:h-[450px] bg-muted overflow-hidden">
           <img 
             src={event.hero_image_url} 
             alt={event.name}
-            className="w-full h-full object-cover object-top"
+            className="w-full h-full object-cover object-top md:object-center"
           />
         </div>
       )}
