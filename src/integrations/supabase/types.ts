@@ -41,6 +41,7 @@ export type Database = {
           enable_map: boolean | null
           enable_participants: boolean | null
           enable_program: boolean | null
+          end_date: string | null
           google_sheets_url: string | null
           hero_image_url: string | null
           id: string
@@ -59,6 +60,7 @@ export type Database = {
           enable_map?: boolean | null
           enable_participants?: boolean | null
           enable_program?: boolean | null
+          end_date?: string | null
           google_sheets_url?: string | null
           hero_image_url?: string | null
           id?: string
@@ -77,6 +79,7 @@ export type Database = {
           enable_map?: boolean | null
           enable_participants?: boolean | null
           enable_program?: boolean | null
+          end_date?: string | null
           google_sheets_url?: string | null
           hero_image_url?: string | null
           id?: string
@@ -303,10 +306,7 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
+      is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "user"

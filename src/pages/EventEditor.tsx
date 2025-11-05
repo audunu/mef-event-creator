@@ -21,6 +21,7 @@ interface EventData {
   name: string;
   slug: string;
   date: string;
+  end_date: string;
   location: string;
   hero_image_url: string;
   published: boolean;
@@ -48,6 +49,7 @@ export default function EventEditor() {
   const [formData, setFormData] = useState<EventData>({
     name: '',
     slug: '',
+    end_date: '',
     date: '',
     location: '',
     hero_image_url: '',
@@ -112,6 +114,7 @@ export default function EventEditor() {
         name: data.name,
         slug: data.slug,
         date: data.date || '',
+        end_date: data.end_date || '',
         location: data.location || '',
         hero_image_url: data.hero_image_url || '',
         published: data.published,
@@ -135,10 +138,18 @@ export default function EventEditor() {
 
     setSaving(true);
 
+    // Validate end date is not before start date
+    if (formData.end_date && formData.date && formData.end_date < formData.date) {
+      toast.error('Sluttdato kan ikke være før startdato');
+      setSaving(false);
+      return;
+    }
+
     const eventData = {
       name: formData.name,
       slug: formData.slug.toLowerCase().replace(/\s+/g, '-'),
       date: formData.date || null,
+      end_date: formData.end_date || null,
       location: formData.location || null,
       hero_image_url: formData.hero_image_url || null,
       published: formData.published,
@@ -267,7 +278,7 @@ export default function EventEditor() {
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="date">Dato</Label>
+                <Label htmlFor="date">Fra dato *</Label>
                 <Input
                   id="date"
                   type="date"
@@ -276,14 +287,26 @@ export default function EventEditor() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="location">Sted</Label>
+                <Label htmlFor="end_date">Til dato (valgfri)</Label>
                 <Input
-                  id="location"
-                  value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  placeholder="Oslo"
+                  id="end_date"
+                  type="date"
+                  value={formData.end_date}
+                  onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
                 />
+                <p className="text-sm text-muted-foreground">
+                  La stå tom for enkeltdagsarrangement
+                </p>
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="location">Sted</Label>
+              <Input
+                id="location"
+                value={formData.location}
+                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                placeholder="Oslo"
+              />
             </div>
             {id && id !== 'new' ? (
               <div className="space-y-2">

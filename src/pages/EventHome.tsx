@@ -4,12 +4,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { MEFLogo } from '@/components/MEFLogo';
 import { Button } from '@/components/ui/button';
 import { Calendar, Users, Building2, Map, Info } from 'lucide-react';
+import { formatEventDateRange } from '@/lib/dateUtils';
 
 interface Event {
   id: string;
   name: string;
   slug: string;
   date: string | null;
+  end_date: string | null;
   location: string | null;
   hero_image_url: string | null;
   enable_program: boolean;
@@ -118,11 +120,7 @@ export default function EventHome() {
           <h1 className="text-3xl md:text-4xl font-bold mb-3">{event.name}</h1>
           {(event.date || event.location) && (
             <p className="text-lg text-muted-foreground">
-              {event.date && new Date(event.date).toLocaleDateString('nb-NO', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-              })}
+              {event.date && formatEventDateRange(event.date, event.end_date)}
               {event.date && event.location && ' • '}
               {event.location}
             </p>
