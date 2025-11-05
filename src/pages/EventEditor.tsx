@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,12 +9,13 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Loader2, CheckCircle2, XCircle, HelpCircle } from 'lucide-react';
+import { ArrowLeft, Loader2, CheckCircle2, XCircle, HelpCircle, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { InfoSectionManager } from '@/components/InfoSectionManager';
 import { MapUploader } from '@/components/MapUploader';
 import { HeroImageUploader } from '@/components/HeroImageUploader';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
+import QRCode from 'qrcode';
 
 interface EventData {
   name: string;
@@ -41,6 +42,8 @@ export default function EventEditor() {
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<any>(null);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
+  const qrCanvasRef = useRef<HTMLCanvasElement>(null);
   
   const [formData, setFormData] = useState<EventData>({
     name: '',
@@ -71,6 +74,28 @@ export default function EventEditor() {
       setLoading(false);
     }
   }, [id]);
+
+  useEffect(() => {
+    const generateQR = async () => {
+      if (formData.slug) {
+        const publicUrl = `${window.location.origin}/events/${formData.slug}`;
+        try {
+          const dataUrl = await QRCode.toDataURL(publicUrl, {
+            width: 256,
+            margin: 2,
+            color: {
+              dark: '#000000',
+              light: '#FFFFFF',
+            },
+          });
+          setQrCodeUrl(dataUrl);
+        } catch (err) {
+          console.error('Error generating QR code:', err);
+        }
+      }
+    };
+    generateQR();
+  }, [formData.slug]);
 
   const fetchEvent = async () => {
     const { data, error } = await supabase
@@ -180,6 +205,18 @@ export default function EventEditor() {
     }
 
     setSyncing(false);
+  };
+
+  const handleDownloadQR = () => {
+    if (!qrCodeUrl) return;
+    
+    const link = document.createElement('a');
+    link.href = qrCodeUrl;
+    link.download = `${formData.slug}-qr-code.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('QR-kode lastet ned');
   };
 
   if (authLoading || loading) {
@@ -293,6 +330,34 @@ export default function EventEditor() {
                 </Button>
               </div>
             </div>
+            {formData.slug && qrCodeUrl && (
+              <div className="space-y-2">
+                <Label>QR-kode for arrangement</Label>
+                <div className="flex flex-col sm:flex-row gap-4 items-start">
+                  <div className="flex-shrink-0">
+                    <img 
+                      src={qrCodeUrl} 
+                      alt="QR Code" 
+                      className="w-48 h-48 border border-border rounded-lg"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <p className="text-sm text-muted-foreground">
+                      Skann QR-koden for å gå direkte til arrangementssiden
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleDownloadQR}
+                      className="w-fit"
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Last ned QR-kode
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
