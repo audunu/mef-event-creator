@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { MEFLogo } from '@/components/MEFLogo';
 import { BottomNav } from '@/components/BottomNav';
@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ArrowLeft, Clock, MapPin } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { cn } from '@/lib/utils';
 
 interface Event {
   id: string;
@@ -33,14 +34,21 @@ interface ProgramItem {
 export default function EventProgram() {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [event, setEvent] = useState<Event | null>(null);
   const [items, setItems] = useState<ProgramItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<ProgramItem | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
   }, [slug]);
+
+  useEffect(() => {
+    const dayParam = searchParams.get('day');
+    setSelectedDay(dayParam);
+  }, [searchParams]);
 
   const fetchData = async () => {
     const { data: eventData } = await supabase
@@ -80,6 +88,22 @@ export default function EventProgram() {
     return acc;
   }, {} as Record<string, ProgramItem[]>);
 
+  const uniqueDays = Object.keys(groupedByDay).sort();
+  const showFilters = uniqueDays.length > 1;
+
+  const filteredGroupedByDay = selectedDay
+    ? { [selectedDay]: groupedByDay[selectedDay] || [] }
+    : groupedByDay;
+
+  const handleDayFilter = (day: string | null) => {
+    setSelectedDay(day);
+    if (day) {
+      setSearchParams({ day });
+    } else {
+      setSearchParams({});
+    }
+  };
+
   return (
     <div className="min-h-screen bg-secondary/20 pb-20">
       <header className="bg-card border-b border-border sticky top-0 z-40">
@@ -93,15 +117,49 @@ export default function EventProgram() {
       </header>
 
       <div className="max-w-4xl mx-auto px-4 py-6">
+        {showFilters && (
+          <div className="mb-6">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={selectedDay === null ? "default" : "outline"}
+                onClick={() => handleDayFilter(null)}
+                size="sm"
+              >
+                Alle dager
+              </Button>
+              {uniqueDays.map((day) => (
+                <Button
+                  key={day}
+                  variant={selectedDay === day ? "default" : "outline"}
+                  onClick={() => handleDayFilter(day)}
+                  size="sm"
+                >
+                  {new Date(day).toLocaleDateString('nb-NO', { 
+                    weekday: 'short', 
+                    day: 'numeric',
+                    month: 'short'
+                  })}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
+        
         {Object.keys(groupedByDay).length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center text-muted-foreground">
               Ingen programposter ennå
             </CardContent>
           </Card>
+        ) : selectedDay && (!filteredGroupedByDay[selectedDay] || filteredGroupedByDay[selectedDay].length === 0) ? (
+          <Card>
+            <CardContent className="py-12 text-center text-muted-foreground">
+              Ingen programposter denne dagen
+            </CardContent>
+          </Card>
         ) : (
           <div className="space-y-6">
-            {Object.entries(groupedByDay).map(([day, dayItems]) => (
+            {Object.entries(filteredGroupedByDay).map(([day, dayItems]) => (
               <div key={day}>
                 <h2 className="text-xl font-bold mb-3">
                   {new Date(day).toLocaleDateString('nb-NO', { 
