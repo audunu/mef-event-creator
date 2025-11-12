@@ -6,6 +6,7 @@ import { BottomNav } from '@/components/BottomNav';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ArrowLeft, Search } from 'lucide-react';
 
 interface Event {
@@ -25,13 +26,25 @@ interface Participant {
   company: string | null;
 }
 
+interface GroupedParticipants {
+  company: string;
+  participants: Participant[];
+}
+
+type SortMode = 'name' | 'company';
+
 export default function EventParticipants() {
   const { slug } = useParams();
   const navigate = useNavigate();
   const [event, setEvent] = useState<Event | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [filteredParticipants, setFilteredParticipants] = useState<Participant[]>([]);
+  const [groupedParticipants, setGroupedParticipants] = useState<GroupedParticipants[]>([]);
   const [search, setSearch] = useState('');
+  const [sortMode, setSortMode] = useState<SortMode>(() => {
+    const saved = localStorage.getItem('participantsSortMode');
+    return (saved as SortMode) || 'company';
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -39,16 +52,51 @@ export default function EventParticipants() {
   }, [slug]);
 
   useEffect(() => {
+    localStorage.setItem('participantsSortMode', sortMode);
+  }, [sortMode]);
+
+  useEffect(() => {
+    const norwegianSort = (a: string, b: string) => {
+      return a.localeCompare(b, 'no', { sensitivity: 'base' });
+    };
+
+    let filtered = participants;
+    
     if (search) {
-      const filtered = participants.filter(p =>
+      filtered = participants.filter(p =>
         p.name.toLowerCase().includes(search.toLowerCase()) ||
         p.company?.toLowerCase().includes(search.toLowerCase())
       );
-      setFilteredParticipants(filtered);
-    } else {
-      setFilteredParticipants(participants);
     }
-  }, [search, participants]);
+
+    if (sortMode === 'name') {
+      // Sort by person name
+      const sorted = [...filtered].sort((a, b) => norwegianSort(a.name, b.name));
+      setFilteredParticipants(sorted);
+      setGroupedParticipants([]);
+    } else {
+      // Group by company
+      const groups = filtered.reduce((acc, participant) => {
+        const company = participant.company || 'Ingen bedrift';
+        if (!acc[company]) {
+          acc[company] = [];
+        }
+        acc[company].push(participant);
+        return acc;
+      }, {} as Record<string, Participant[]>);
+
+      // Sort companies alphabetically, then people within each company
+      const sorted = Object.entries(groups)
+        .sort(([a], [b]) => norwegianSort(a, b))
+        .map(([company, participants]) => ({
+          company,
+          participants: participants.sort((a, b) => norwegianSort(a.name, b.name))
+        }));
+
+      setGroupedParticipants(sorted);
+      setFilteredParticipants([]);
+    }
+  }, [search, participants, sortMode]);
 
   const fetchData = async () => {
     const { data: eventData } = await supabase
@@ -94,7 +142,7 @@ export default function EventParticipants() {
       </header>
 
       <div className="max-w-4xl mx-auto px-4 py-6">
-        <div className="mb-6">
+        <div className="mb-6 space-y-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input
@@ -104,15 +152,24 @@ export default function EventParticipants() {
               className="pl-10"
             />
           </div>
+
+          <ToggleGroup type="single" value={sortMode} onValueChange={(value) => value && setSortMode(value as SortMode)} className="justify-start">
+            <ToggleGroupItem value="company" className="flex-1 sm:flex-initial">
+              Sorter på bedrift
+            </ToggleGroupItem>
+            <ToggleGroupItem value="name" className="flex-1 sm:flex-initial">
+              Sorter på navn
+            </ToggleGroupItem>
+          </ToggleGroup>
         </div>
 
-        {filteredParticipants.length === 0 ? (
+        {(sortMode === 'name' ? filteredParticipants.length === 0 : groupedParticipants.length === 0) ? (
           <Card>
             <CardContent className="py-12 text-center text-muted-foreground">
               {search ? 'Ingen treff' : 'Ingen deltakere ennå'}
             </CardContent>
           </Card>
-        ) : (
+        ) : sortMode === 'name' ? (
           <div className="space-y-2">
             {filteredParticipants.map((participant) => (
               <Card key={participant.id}>
@@ -125,10 +182,27 @@ export default function EventParticipants() {
               </Card>
             ))}
           </div>
+        ) : (
+          <div className="space-y-3">
+            {groupedParticipants.map((group) => (
+              <Card key={group.company}>
+                <CardContent className="py-4">
+                  <div className="font-bold text-base mb-2">{group.company}</div>
+                  <div className="space-y-1">
+                    {group.participants.map((participant) => (
+                      <div key={participant.id} className="text-sm text-muted-foreground pl-2">
+                        {participant.name}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         )}
 
         <div className="mt-4 text-sm text-muted-foreground text-center">
-          Viser {filteredParticipants.length} av {participants.length} deltakere
+          Viser {sortMode === 'name' ? filteredParticipants.length : groupedParticipants.reduce((sum, g) => sum + g.participants.length, 0)} av {participants.length} deltakere
         </div>
       </div>
 
