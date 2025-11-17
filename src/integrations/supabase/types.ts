@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_profiles: {
+        Row: {
+          created_at: string | null
+          email: string
+          full_name: string
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          full_name: string
+          id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       admin_settings: {
         Row: {
           id: string
@@ -35,6 +59,7 @@ export type Database = {
       events: {
         Row: {
           created_at: string | null
+          created_by: string | null
           date: string | null
           enable_exhibitors: boolean | null
           enable_info: boolean | null
@@ -54,6 +79,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          created_by?: string | null
           date?: string | null
           enable_exhibitors?: boolean | null
           enable_info?: boolean | null
@@ -73,6 +99,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          created_by?: string | null
           date?: string | null
           enable_exhibitors?: boolean | null
           enable_info?: boolean | null
@@ -307,6 +334,7 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: never; Returns: boolean }
+      is_super_admin: { Args: never; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "user" | "super_admin" | "regional_admin"
