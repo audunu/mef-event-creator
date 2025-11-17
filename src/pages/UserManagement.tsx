@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, UserPlus, ArrowLeft } from 'lucide-react';
+import { Trash2, UserPlus, ArrowLeft, Plus } from 'lucide-react';
 import { MEFLogo } from '@/components/MEFLogo';
 
 interface AdminUser {
@@ -86,40 +86,32 @@ export default function UserManagement() {
     e.preventDefault();
     
     try {
-      // Create auth user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: newUser.email,
-        password: newUser.password,
-        options: {
-          data: {
-            full_name: newUser.full_name
-          }
+      // Call edge function to create user (uses service role key)
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-admin-user`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({
+            email: newUser.email,
+            password: newUser.password,
+            full_name: newUser.full_name,
+            role: newUser.role
+          })
         }
-      });
+      );
 
-      if (authError) throw authError;
-      if (!authData.user) throw new Error('Bruker ble ikke opprettet');
-
-      // Add admin profile
-      const { error: profileError } = await supabase
-        .from('admin_profiles')
-        .insert({
-          id: authData.user.id,
-          full_name: newUser.full_name,
-          email: newUser.email
-        });
-
-      if (profileError) throw profileError;
-
-      // Add role
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: authData.user.id,
-          role: newUser.role
-        });
-
-      if (roleError) throw roleError;
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Kunne ikke opprette bruker');
+      }
 
       toast({
         title: 'Bruker opprettet',
@@ -134,6 +126,48 @@ export default function UserManagement() {
       toast({
         title: 'Feil',
         description: error.message || 'Kunne ikke legge til bruker',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleCleanupOrphans = async () => {
+    if (!confirm('Dette vil slette alle brukere i autentiseringssystemet som ikke har en profil. Fortsette?')) {
+      return;
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cleanup-orphaned-users`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          }
+        }
+      );
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Kunne ikke rydde opp');
+      }
+
+      toast({
+        title: 'Opprydding fullført',
+        description: `${result.deleted_count} foreldreløse brukere ble slettet`
+      });
+
+      fetchUsers();
+    } catch (error: any) {
+      console.error('Error cleaning up orphans:', error);
+      toast({
+        title: 'Feil',
+        description: error.message || 'Kunne ikke rydde opp',
         variant: 'destructive'
       });
     }
@@ -232,10 +266,20 @@ export default function UserManagement() {
           <CardHeader>
             <div className="flex justify-between items-center">
               <CardTitle>Administrative brukere</CardTitle>
-              <Button onClick={() => setShowAddForm(!showAddForm)}>
-                <UserPlus className="w-4 h-4 mr-2" />
-                Legg til bruker
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={handleCleanupOrphans}
+                  title="Rydd opp i foreldreløse brukere"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Rydd opp
+                </Button>
+                <Button onClick={() => setShowAddForm(!showAddForm)}>
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Legg til bruker
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
