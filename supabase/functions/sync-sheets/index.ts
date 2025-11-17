@@ -153,14 +153,14 @@ serve(async (req) => {
       );
     }
 
-    // 3. Check if user has admin role
+    // 3. Check if user has admin role (super_admin or regional_admin)
     console.log('Checking admin role for user:', user.id);
     
     const { data: roleData, error: roleError } = await supabaseClient
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
-      .eq('role', 'admin')
+      .in('role', ['super_admin', 'regional_admin'])
       .maybeSingle();
 
     console.log('Role check result:', { roleData, roleError, userId: user.id });
@@ -178,7 +178,8 @@ serve(async (req) => {
       );
     }
     
-    console.log('Admin authorization confirmed for user:', user.id);
+    const userRole = roleData.role;
+    console.log('Admin authorization confirmed for user:', user.id, 'with role:', userRole);
 
     // 4. Parse and validate request body
     const { sheetsUrl, eventId } = await req.json();
@@ -215,7 +216,7 @@ serve(async (req) => {
     // 6. Verify event exists and user has access
     const { data: eventData, error: eventError } = await supabaseClient
       .from('events')
-      .select('id')
+      .select('id, created_by')
       .eq('id', eventId)
       .maybeSingle();
 
@@ -223,6 +224,19 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ success: false, error: 'Event not found or access denied' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 7. For regional admins, verify they own the event
+    if (userRole === 'regional_admin' && eventData.created_by !== user.id) {
+      console.error('Regional admin tried to sync event they do not own:', {
+        userId: user.id,
+        eventId,
+        eventCreatedBy: eventData.created_by
+      });
+      return new Response(
+        JSON.stringify({ success: false, error: 'You can only sync events you created' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
