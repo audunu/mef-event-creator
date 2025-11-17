@@ -100,7 +100,9 @@ export function InfoSectionManager({ eventId }: InfoSectionManagerProps) {
     }
 
     if (error) {
-      toast.error('Kunne ikke lagre info-kort');
+      console.error('Info section save error:', error);
+      console.error('Attempted to save data:', sectionData);
+      toast.error(`Kunne ikke lagre info-kort: ${error.message}`);
     } else {
       toast.success(editingSection ? 'Info-kort oppdatert' : 'Info-kort opprettet');
       setDialogOpen(false);
@@ -117,7 +119,8 @@ export function InfoSectionManager({ eventId }: InfoSectionManagerProps) {
       .eq('id', sectionToDelete);
 
     if (error) {
-      toast.error('Kunne ikke slette info-kort');
+      console.error('Info section delete error:', error);
+      toast.error(`Kunne ikke slette info-kort: ${error.message}`);
     } else {
       toast.success('Info-kort slettet');
       setDeleteDialogOpen(false);
