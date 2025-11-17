@@ -37,7 +37,7 @@ interface EventData {
 export default function EventEditor() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, isSuperAdmin, isRegionalAdmin } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -45,6 +45,7 @@ export default function EventEditor() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const qrCanvasRef = useRef<HTMLCanvasElement>(null);
+  const [eventCreatedBy, setEventCreatedBy] = useState<string | null>(null);
   
   const [formData, setFormData] = useState<EventData>({
     name: '',
@@ -109,24 +110,33 @@ export default function EventEditor() {
     if (error) {
       toast.error('Kunne ikke laste arrangement');
       navigate('/admin/dashboard');
-    } else {
-      setFormData({
-        name: data.name,
-        slug: data.slug,
-        date: data.date || '',
-        end_date: data.end_date || '',
-        location: data.location || '',
-        hero_image_url: data.hero_image_url || '',
-        published: data.published,
-        enable_program: data.enable_program,
-        enable_participants: data.enable_participants,
-        enable_exhibitors: data.enable_exhibitors,
-        enable_map: data.enable_map,
-        enable_info: data.enable_info,
-        google_sheets_url: data.google_sheets_url || '',
-        last_synced_at: data.last_synced_at,
-      });
+      return;
     }
+
+    // Check permission
+    if (!isSuperAdmin && data.created_by !== user?.id) {
+      toast.error('Du har ikke tilgang til å redigere dette arrangementet');
+      navigate('/admin/dashboard');
+      return;
+    }
+
+    setEventCreatedBy(data.created_by);
+    setFormData({
+      name: data.name,
+      slug: data.slug,
+      date: data.date || '',
+      end_date: data.end_date || '',
+      location: data.location || '',
+      hero_image_url: data.hero_image_url || '',
+      published: data.published,
+      enable_program: data.enable_program,
+      enable_participants: data.enable_participants,
+      enable_exhibitors: data.enable_exhibitors,
+      enable_map: data.enable_map,
+      enable_info: data.enable_info,
+      google_sheets_url: data.google_sheets_url || '',
+      last_synced_at: data.last_synced_at,
+    });
     setLoading(false);
   };
 
@@ -159,6 +169,7 @@ export default function EventEditor() {
       enable_map: formData.enable_map,
       enable_info: formData.enable_info,
       google_sheets_url: formData.google_sheets_url || null,
+      ...(id === 'new' && { created_by: user?.id }),
     };
 
     let result;

@@ -6,6 +6,9 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   isAdmin: boolean;
+  isSuperAdmin: boolean;
+  isRegionalAdmin: boolean;
+  userRole: 'super_admin' | 'regional_admin' | null;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshAdminStatus: () => Promise<void>;
@@ -17,6 +20,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [isRegionalAdmin, setIsRegionalAdmin] = useState(false);
+  const [userRole, setUserRole] = useState<'super_admin' | 'regional_admin' | null>(null);
 
   // Check if user has admin role
   const checkAdminRole = async (userId: string) => {
@@ -24,10 +30,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .from('user_roles')
       .select('role')
       .eq('user_id', userId)
-      .eq('role', 'admin')
+      .in('role', ['super_admin', 'regional_admin'])
       .maybeSingle();
     
-    setIsAdmin(!error && !!data);
+    if (!error && data) {
+      const role = data.role as 'super_admin' | 'regional_admin';
+      setUserRole(role);
+      setIsSuperAdmin(role === 'super_admin');
+      setIsRegionalAdmin(role === 'regional_admin');
+      setIsAdmin(true);
+    } else {
+      setUserRole(null);
+      setIsSuperAdmin(false);
+      setIsRegionalAdmin(false);
+      setIsAdmin(false);
+    }
   };
 
   useEffect(() => {
@@ -38,6 +55,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         checkAdminRole(session.user.id);
       } else {
         setIsAdmin(false);
+        setIsSuperAdmin(false);
+        setIsRegionalAdmin(false);
+        setUserRole(null);
       }
       setLoading(false);
     });
@@ -52,6 +72,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }, 0);
       } else {
         setIsAdmin(false);
+        setIsSuperAdmin(false);
+        setIsRegionalAdmin(false);
+        setUserRole(null);
       }
     });
 
@@ -74,7 +97,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAdmin, signIn, signOut, refreshAdminStatus }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      loading, 
+      isAdmin, 
+      isSuperAdmin, 
+      isRegionalAdmin, 
+      userRole,
+      signIn, 
+      signOut, 
+      refreshAdminStatus 
+    }}>
       {children}
     </AuthContext.Provider>
   );
