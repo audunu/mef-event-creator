@@ -255,6 +255,7 @@ export type Database = {
       }
       program_items: {
         Row: {
+          category: string | null
           created_at: string | null
           day: string
           description: string | null
@@ -267,6 +268,7 @@ export type Database = {
           title: string
         }
         Insert: {
+          category?: string | null
           created_at?: string | null
           day: string
           description?: string | null
@@ -279,6 +281,7 @@ export type Database = {
           title: string
         }
         Update: {
+          category?: string | null
           created_at?: string | null
           day?: string
           description?: string | null
