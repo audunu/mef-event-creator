@@ -300,6 +300,7 @@ serve(async (req) => {
           const titleRaw = getTrimmed(row.tittel || row.Tittel || row.title || row.Title);
           const descriptionRaw = getTrimmed(row.beskrivelse || row.Beskrivelse || row.description || row.Description);
           const locationRaw = getTrimmed(row.sted || row.Sted || row.location || row.Location);
+          const categoryRaw = getTrimmed(row.kategori || row.Kategori || row.category || row.Category);
           
           // Parse and validate
           const day = parseFlexibleDate(dayRaw);
@@ -326,6 +327,7 @@ serve(async (req) => {
             title: titleRaw || 'Untitled',
             description: descriptionRaw,
             location: locationRaw,
+            category: categoryRaw, // Store comma-separated categories as-is
           };
         })
         .filter((item: any) => {

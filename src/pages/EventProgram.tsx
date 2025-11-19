@@ -29,6 +29,7 @@ interface ProgramItem {
   title: string;
   description: string | null;
   location: string | null;
+  category: string | null;
 }
 
 export default function EventProgram() {
@@ -40,6 +41,7 @@ export default function EventProgram() {
   const [selectedItem, setSelectedItem] = useState<ProgramItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -47,7 +49,9 @@ export default function EventProgram() {
 
   useEffect(() => {
     const dayParam = searchParams.get('day');
+    const categoryParam = searchParams.get('category');
     setSelectedDay(dayParam);
+    setSelectedCategory(categoryParam);
   }, [searchParams]);
 
   const fetchData = async () => {
@@ -89,19 +93,66 @@ export default function EventProgram() {
   }, {} as Record<string, ProgramItem[]>);
 
   const uniqueDays = Object.keys(groupedByDay).sort();
-  const showFilters = uniqueDays.length > 1;
+  const showDayFilters = uniqueDays.length > 1;
 
-  const filteredGroupedByDay = selectedDay
-    ? { [selectedDay]: groupedByDay[selectedDay] || [] }
-    : groupedByDay;
+  // Extract and process categories
+  const extractCategories = (items: ProgramItem[]): string[] => {
+    const categoriesSet = new Set<string>();
+    items.forEach(item => {
+      if (item.category) {
+        // Split by comma, trim whitespace, filter empty strings
+        const categories = item.category
+          .split(',')
+          .map(cat => cat.trim())
+          .filter(cat => cat.length > 0);
+        categories.forEach(cat => categoriesSet.add(cat.toLowerCase()));
+      }
+    });
+    // Sort alphabetically (A-Å Norwegian order)
+    return Array.from(categoriesSet).sort((a, b) => a.localeCompare(b, 'no'));
+  };
+
+  const uniqueCategories = extractCategories(items);
+  const showCategoryFilters = uniqueCategories.length > 0;
+
+  // Filter by category
+  const categoryFilteredItems = selectedCategory
+    ? items.filter(item => {
+        if (!item.category) return false;
+        const itemCategories = item.category
+          .split(',')
+          .map(cat => cat.trim().toLowerCase());
+        return itemCategories.includes(selectedCategory.toLowerCase());
+      })
+    : items;
+
+  // Group filtered items by day
+  const filteredGroupedByDay = categoryFilteredItems.reduce((acc, item) => {
+    const day = item.day;
+    if (!acc[day]) acc[day] = [];
+    acc[day].push(item);
+    return acc;
+  }, {} as Record<string, ProgramItem[]>);
+
+  // Then filter by selected day
+  const finalFilteredGroupedByDay = selectedDay
+    ? { [selectedDay]: filteredGroupedByDay[selectedDay] || [] }
+    : filteredGroupedByDay;
 
   const handleDayFilter = (day: string | null) => {
     setSelectedDay(day);
-    if (day) {
-      setSearchParams({ day });
-    } else {
-      setSearchParams({});
-    }
+    const params: Record<string, string> = {};
+    if (day) params.day = day;
+    if (selectedCategory) params.category = selectedCategory;
+    setSearchParams(params);
+  };
+
+  const handleCategoryFilter = (category: string | null) => {
+    setSelectedCategory(category);
+    const params: Record<string, string> = {};
+    if (selectedDay) params.day = selectedDay;
+    if (category) params.category = category;
+    setSearchParams(params);
   };
 
   return (
@@ -117,49 +168,74 @@ export default function EventProgram() {
       </header>
 
       <div className="max-w-4xl mx-auto px-4 py-6">
-        {showFilters && (
-          <div className="mb-6">
+        {showDayFilters && (
+          <div className="mb-4">
             <div className="flex flex-wrap gap-2">
               <Button
-                variant={selectedDay === null ? "default" : "outline"}
+                variant={!selectedDay ? 'default' : 'outline'}
                 onClick={() => handleDayFilter(null)}
-                size="sm"
               >
                 Alle dager
               </Button>
-              {uniqueDays.map((day) => (
-                <Button
-                  key={day}
-                  variant={selectedDay === day ? "default" : "outline"}
-                  onClick={() => handleDayFilter(day)}
-                  size="sm"
-                >
-                  {new Date(day).toLocaleDateString('nb-NO', { 
-                    weekday: 'short', 
-                    day: 'numeric',
-                    month: 'short'
-                  })}
-                </Button>
-              ))}
+              {uniqueDays.map((day) => {
+                const date = new Date(day + 'T00:00:00');
+                const dayName = date.toLocaleDateString('no-NO', { weekday: 'long' });
+                const capitalized = dayName.charAt(0).toUpperCase() + dayName.slice(1);
+                
+                return (
+                  <Button
+                    key={day}
+                    variant={selectedDay === day ? 'default' : 'outline'}
+                    onClick={() => handleDayFilter(day)}
+                  >
+                    {capitalized}
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {showCategoryFilters && (
+          <div className="mb-6">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={!selectedCategory ? 'default' : 'outline'}
+                onClick={() => handleCategoryFilter(null)}
+              >
+                Alle kategorier
+              </Button>
+              {uniqueCategories.map((category) => {
+                // Find first occurrence to get original casing
+                const originalCase = items.find(item => 
+                  item.category?.toLowerCase().includes(category.toLowerCase())
+                )?.category?.split(',')
+                  .map(c => c.trim())
+                  .find(c => c.toLowerCase() === category.toLowerCase()) || category;
+                
+                return (
+                  <Button
+                    key={category}
+                    variant={selectedCategory?.toLowerCase() === category.toLowerCase() ? 'default' : 'outline'}
+                    onClick={() => handleCategoryFilter(category)}
+                  >
+                    {originalCase}
+                  </Button>
+                );
+              })}
             </div>
           </div>
         )}
         
-        {Object.keys(groupedByDay).length === 0 ? (
+        {Object.keys(finalFilteredGroupedByDay).length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center text-muted-foreground">
-              Ingen programposter ennå
-            </CardContent>
-          </Card>
-        ) : selectedDay && (!filteredGroupedByDay[selectedDay] || filteredGroupedByDay[selectedDay].length === 0) ? (
-          <Card>
-            <CardContent className="py-12 text-center text-muted-foreground">
-              Ingen programposter denne dagen
+              Ingen programposter {selectedDay && 'denne dagen'}{selectedCategory && selectedDay && ' og '}{selectedCategory && 'i denne kategorien'}
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-6">
-            {Object.entries(filteredGroupedByDay).map(([day, dayItems]) => (
+            {Object.entries(finalFilteredGroupedByDay).map(([day, dayItems]) => (
               <div key={day}>
                 <h2 className="text-xl font-bold mb-3">
                   {new Date(day).toLocaleDateString('nb-NO', { 
