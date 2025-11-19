@@ -30,6 +30,16 @@ export function HeroImageUploader({ eventId, currentImageUrl, onImageUpdate }: H
       return;
     }
 
+    // Check image orientation (soft warning only)
+    const img = new Image();
+    img.onload = () => {
+      const ratio = img.width / img.height;
+      if (ratio < 1.0) {
+        toast.warning('Tips: Landscape-bilder (liggende) ser best ut som hovedbilde');
+      }
+    };
+    img.src = URL.createObjectURL(file);
+
     setUploading(true);
 
     try {
@@ -112,11 +122,11 @@ export function HeroImageUploader({ eventId, currentImageUrl, onImageUpdate }: H
     <div className="space-y-4">
       {currentImageUrl && (
         <div className="space-y-2">
-          <div className="border rounded-lg overflow-hidden">
+          <div className="border rounded-lg overflow-hidden bg-muted flex items-center justify-center" style={{ minHeight: '200px', maxHeight: '400px' }}>
             <img
               src={currentImageUrl}
               alt="Arrangement hovedbilde"
-              className="w-full max-w-md mx-auto"
+              className="w-full h-full object-contain max-h-[400px]"
             />
           </div>
           <div className="flex items-center justify-between">
@@ -163,7 +173,8 @@ export function HeroImageUploader({ eventId, currentImageUrl, onImageUpdate }: H
           )}
         </Button>
         <p className="text-xs text-muted-foreground mt-2">
-          PNG, JPG, JPEG eller WebP. Maks 10MB.
+          PNG, JPG, JPEG eller WebP. Maks 10MB.<br />
+          Tips: Landscape-bilder (1920x800 til 2400x1000 piksler) ser best ut.
         </p>
       </div>
     </div>
