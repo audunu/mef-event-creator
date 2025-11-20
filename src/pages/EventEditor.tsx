@@ -203,7 +203,17 @@ export default function EventEditor() {
     setSyncResult(null);
 
     try {
+      // Get the current session token to pass to edge function
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('Du må være logget inn for å synkronisere');
+      }
+
       const { data, error } = await supabase.functions.invoke('sync-sheets', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: {
           sheetsUrl: formData.google_sheets_url,
           eventId: id,
