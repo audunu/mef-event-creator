@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,9 +6,11 @@ import { MEFLogo } from '@/components/MEFLogo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Plus, Edit, Trash2, LogOut, Users } from 'lucide-react';
+import { Plus, Edit, Trash2, LogOut, Users, MoreVertical, Link as LinkIcon, QrCode, ExternalLink, Download, Copy } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import QRCode from 'qrcode';
 
 interface Event {
   id: string;
@@ -28,6 +30,9 @@ export default function AdminDashboard() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [filter, setFilter] = useState<'all' | 'mine'>('all');
+  const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [selectedEventForQr, setSelectedEventForQr] = useState<Event | null>(null);
+  const [qrDataUrl, setQrDataUrl] = useState<string>('');
 
   useEffect(() => {
     if (!loading && !user) {
@@ -111,6 +116,45 @@ export default function AdminDashboard() {
     navigate('/admin/login');
   };
 
+  const getPublicUrl = (slug: string) => {
+    return `${window.location.origin}/events/${slug}`;
+  };
+
+  const handleCopyUrl = (slug: string) => {
+    const url = getPublicUrl(slug);
+    navigator.clipboard.writeText(url);
+    toast.success('URL kopiert!');
+  };
+
+  const handleShowQrCode = async (event: Event) => {
+    const url = getPublicUrl(event.slug);
+    try {
+      const dataUrl = await QRCode.toDataURL(url, {
+        width: 400,
+        margin: 2,
+      });
+      setQrDataUrl(dataUrl);
+      setSelectedEventForQr(event);
+      setQrModalOpen(true);
+    } catch (error) {
+      toast.error('Kunne ikke generere QR-kode');
+    }
+  };
+
+  const handleDownloadQr = () => {
+    if (!qrDataUrl || !selectedEventForQr) return;
+    
+    const link = document.createElement('a');
+    link.download = `qr-${selectedEventForQr.slug}.png`;
+    link.href = qrDataUrl;
+    link.click();
+    toast.success('QR-kode lastet ned!');
+  };
+
+  const handleOpenPublic = (slug: string) => {
+    window.open(getPublicUrl(slug), '_blank');
+  };
+
   if (loading || !user) {
     return <div className="min-h-screen flex items-center justify-center">Laster...</div>;
   }
@@ -180,7 +224,30 @@ export default function AdminDashboard() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredEvents.map((event) => (
-              <Card key={event.id} className="overflow-hidden">
+              <Card key={event.id} className="overflow-hidden relative">
+                <div className="absolute top-2 right-2 z-10">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 bg-background/80 backdrop-blur-sm hover:bg-background/95">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem onClick={() => handleCopyUrl(event.slug)}>
+                        <Copy className="h-4 w-4 mr-2" />
+                        Kopier URL
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleShowQrCode(event)}>
+                        <QrCode className="h-4 w-4 mr-2" />
+                        Vis QR-kode
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleOpenPublic(event.slug)}>
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        Åpne offentlig side
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
                 {event.hero_image_url && (
                   <div className="aspect-video bg-muted overflow-hidden">
                     <img 
@@ -224,6 +291,44 @@ export default function AdminDashboard() {
           </div>
         )}
       </div>
+
+      <Dialog open={qrModalOpen} onOpenChange={setQrModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{selectedEventForQr?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4 py-4">
+            {qrDataUrl && (
+              <img 
+                src={qrDataUrl} 
+                alt="QR Code" 
+                className="w-64 h-64"
+              />
+            )}
+            <p className="text-sm text-muted-foreground text-center break-all px-4">
+              {selectedEventForQr && getPublicUrl(selectedEventForQr.slug)}
+            </p>
+            <div className="flex gap-2 w-full">
+              <Button 
+                variant="outline" 
+                className="flex-1"
+                onClick={() => selectedEventForQr && handleCopyUrl(selectedEventForQr.slug)}
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                Kopier URL
+              </Button>
+              <Button 
+                variant="default" 
+                className="flex-1"
+                onClick={handleDownloadQr}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Last ned QR-kode
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
