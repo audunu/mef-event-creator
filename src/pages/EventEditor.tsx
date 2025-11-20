@@ -222,6 +222,11 @@ export default function EventEditor() {
 
       if (error) throw error;
 
+      // Check if the response indicates failure
+      if (data && !data.success) {
+        throw new Error(data.error || 'Synkronisering feilet');
+      }
+
       setSyncResult(data);
       
       // Update last synced timestamp
@@ -232,8 +237,14 @@ export default function EventEditor() {
 
       toast.success('Synkronisering fullført');
     } catch (error: any) {
-      toast.error('Synkronisering feilet: ' + error.message);
-      setSyncResult({ success: false, error: error.message });
+      console.error('Sync error:', error);
+      const errorMessage = error.message || 'Ukjent feil';
+      toast.error('Synkronisering feilet: ' + errorMessage);
+      setSyncResult({ 
+        success: false, 
+        error: errorMessage,
+        details: error.details || error.context || undefined
+      });
     }
 
     setSyncing(false);

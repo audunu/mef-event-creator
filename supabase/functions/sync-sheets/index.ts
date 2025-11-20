@@ -165,20 +165,85 @@ serve(async (req) => {
 
     console.log('Role check result:', { roleData, roleError, userId: user.id });
 
-    if (roleError || !roleData) {
-      console.error('Authorization failed:', {
-        hasError: !!roleError,
-        errorMessage: roleError?.message,
-        hasData: !!roleData,
-        userId: user.id
-      });
+    // If no role found, check if this is the first user and auto-create admin
+    if (!roleData && !roleError) {
+      console.log('No role found for user, checking if first admin');
+      
+      // Check if any admin users exist
+      const { count: adminCount } = await supabaseClient
+        .from('user_roles')
+        .select('*', { count: 'exact', head: true })
+        .in('role', ['super_admin', 'regional_admin']);
+
+      if (adminCount === 0) {
+        // This is the first admin user - auto-create with service role client
+        console.log('First admin user detected, auto-creating admin profile and role');
+        
+        const supabaseAdmin = createClient(
+          Deno.env.get('SUPABASE_URL') ?? '',
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+        );
+
+        // Create admin profile
+        const { error: profileError } = await supabaseAdmin
+          .from('admin_profiles')
+          .upsert({
+            id: user.id,
+            email: user.email,
+            full_name: user.email,
+          }, { onConflict: 'id' });
+
+        if (profileError) {
+          console.error('Failed to create admin profile:', profileError);
+        }
+
+        // Create super_admin role
+        const { error: roleCreateError } = await supabaseAdmin
+          .from('user_roles')
+          .upsert({
+            user_id: user.id,
+            role: 'super_admin',
+          }, { onConflict: 'user_id,role' });
+
+        if (roleCreateError) {
+          console.error('Failed to create admin role:', roleCreateError);
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: 'Failed to create admin account. Please contact support.',
+              details: roleCreateError.message 
+            }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        console.log('Successfully created first admin user');
+        // Continue with super_admin role
+      } else {
+        // Not first user and no role found
+        console.error('User has no admin role:', user.id);
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'User not found in admin system. Please contact your administrator to grant admin access.',
+            details: 'User exists but has no admin role assigned'
+          }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else if (roleError) {
+      console.error('Database error checking role:', roleError);
       return new Response(
-        JSON.stringify({ success: false, error: 'Unauthorized - admin role required' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          success: false, 
+          error: 'Database error checking permissions',
+          details: roleError.message 
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
-    const userRole = roleData.role;
+    const userRole = roleData?.role || 'super_admin'; // Default to super_admin if just created
     console.log('Admin authorization confirmed for user:', user.id, 'with role:', userRole);
 
     // 4. Parse and validate request body
