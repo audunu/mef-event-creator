@@ -11,12 +11,14 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import QRCode from 'qrcode';
+import { formatEventDateRange } from '@/lib/dateUtils';
 
 interface Event {
   id: string;
   name: string;
   slug: string;
   date: string | null;
+  end_date: string | null;
   location: string | null;
   hero_image_url: string | null;
   published: boolean;
@@ -29,7 +31,12 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const [events, setEvents] = useState<Event[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'mine'>('all');
+  const [filter, setFilter] = useState<'all' | 'mine'>(() => {
+    return (localStorage.getItem('eventOwnershipFilter') as 'all' | 'mine') || 'all';
+  });
+  const [dateFilter, setDateFilter] = useState<'kommende' | 'gjennomførte'>(() => {
+    return (localStorage.getItem('eventDateFilter') as 'kommende' | 'gjennomførte') || 'kommende';
+  });
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [selectedEventForQr, setSelectedEventForQr] = useState<Event | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
@@ -107,9 +114,51 @@ export default function AdminDashboard() {
     return isSuperAdmin || event.created_by === user?.id;
   };
 
-  const filteredEvents = filter === 'mine' 
-    ? events.filter(event => event.created_by === user?.id)
-    : events;
+  const getTodayDate = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
+  };
+
+  const getEventSortDate = (event: Event) => {
+    return event.date ? new Date(event.date) : null;
+  };
+
+  const isEventKommende = (event: Event) => {
+    const today = getTodayDate();
+    const compareDate = event.end_date ? new Date(event.end_date) : (event.date ? new Date(event.date) : null);
+    if (!compareDate) return true; // Events without date shown in kommende
+    return compareDate >= today;
+  };
+
+  const filteredEvents = events
+    .filter(event => {
+      // Ownership filter (only for regional admins)
+      if (isRegionalAdmin) {
+        const ownershipMatch = filter === 'mine' ? event.created_by === user?.id : true;
+        if (!ownershipMatch) return false;
+      }
+      
+      // Date filter
+      const isKommende = isEventKommende(event);
+      return dateFilter === 'kommende' ? isKommende : !isKommende;
+    })
+    .sort((a, b) => {
+      const dateA = getEventSortDate(a);
+      const dateB = getEventSortDate(b);
+      
+      if (!dateA && !dateB) return 0;
+      if (!dateA) return 1;
+      if (!dateB) return -1;
+      
+      // Sort kommende ascending (soonest first), gjennomførte descending (most recent first)
+      return dateFilter === 'kommende' 
+        ? dateA.getTime() - dateB.getTime()
+        : dateB.getTime() - dateA.getTime();
+    });
+
+  const kommendeCount = events.filter(e => isEventKommende(e)).length;
+  const gjennomførteCount = events.length - kommendeCount;
 
   const handleLogout = async () => {
     await signOut();
@@ -155,6 +204,16 @@ export default function AdminDashboard() {
     window.open(getPublicUrl(slug), '_blank');
   };
 
+  const handleOwnershipFilterChange = (value: 'all' | 'mine') => {
+    setFilter(value);
+    localStorage.setItem('eventOwnershipFilter', value);
+  };
+
+  const handleDateFilterChange = (value: 'kommende' | 'gjennomførte') => {
+    setDateFilter(value);
+    localStorage.setItem('eventDateFilter', value);
+  };
+
   if (loading || !user) {
     return <div className="min-h-screen flex items-center justify-center">Laster...</div>;
   }
@@ -192,11 +251,11 @@ export default function AdminDashboard() {
         </div>
 
         {isRegionalAdmin && (
-          <div className="mb-6">
+          <div className="mb-4">
             <ToggleGroup 
               type="single" 
               value={filter} 
-              onValueChange={(value) => value && setFilter(value as 'all' | 'mine')}
+              onValueChange={(value) => value && handleOwnershipFilterChange(value as 'all' | 'mine')}
               className="justify-start"
             >
               <ToggleGroupItem value="all" aria-label="Vis alle arrangementer">
@@ -209,16 +268,42 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        <div className="mb-6">
+          <ToggleGroup 
+            type="single" 
+            value={dateFilter} 
+            onValueChange={(value) => value && handleDateFilterChange(value as 'kommende' | 'gjennomførte')}
+            className="justify-start"
+          >
+            <ToggleGroupItem value="kommende" aria-label="Vis kommende arrangementer">
+              Kommende arrangementer ({kommendeCount})
+            </ToggleGroupItem>
+            <ToggleGroupItem value="gjennomførte" aria-label="Vis gjennomførte arrangementer">
+              Gjennomførte arrangementer ({gjennomførteCount})
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </div>
+
         {loadingEvents ? (
           <div className="text-center py-12">Laster arrangementer...</div>
         ) : filteredEvents.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
-              <p className="text-muted-foreground mb-4">Ingen arrangementer funnet</p>
-              <Button onClick={() => navigate('/admin/events/new')}>
-                <Plus className="h-4 w-4 mr-2" />
-                Opprett ditt første arrangement
-              </Button>
+              <p className="text-muted-foreground mb-4">
+                {dateFilter === 'kommende' 
+                  ? (isRegionalAdmin && filter === 'mine' 
+                      ? 'Du har ingen kommende arrangementer' 
+                      : 'Ingen kommende arrangementer')
+                  : (isRegionalAdmin && filter === 'mine'
+                      ? 'Du har ingen gjennomførte arrangementer'
+                      : 'Ingen gjennomførte arrangementer')}
+              </p>
+              {dateFilter === 'kommende' && (
+                <Button onClick={() => navigate('/admin/events/new')}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Opprett nytt arrangement
+                </Button>
+              )}
             </CardContent>
           </Card>
         ) : (
@@ -260,11 +345,7 @@ export default function AdminDashboard() {
                 <CardHeader>
                   <CardTitle>{event.name}</CardTitle>
                   <CardDescription>
-                    {event.date && new Date(event.date).toLocaleDateString('nb-NO', { 
-                      year: 'numeric', 
-                      month: 'long', 
-                      day: 'numeric' 
-                    })}
+                    {event.date && formatEventDateRange(event.date, event.end_date)}
                     {event.location && ` • ${event.location}`}
                   </CardDescription>
                 </CardHeader>
