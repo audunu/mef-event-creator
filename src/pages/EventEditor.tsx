@@ -609,9 +609,66 @@ export default function EventEditor() {
                   ) : (
                     <p className="text-sm text-destructive">{syncResult.error}</p>
                   )}
-                </div>
-              )}
-            </CardContent>
+                 </div>
+               )}
+
+               {/* Markdown Help Section */}
+               <div className="space-y-2 pt-4">
+                 <div className="rounded-lg border bg-card p-4 space-y-3 text-sm">
+                   <h3 className="font-semibold text-base flex items-center gap-2">
+                     💡 Tips: Markdown-formatering i Program-beskrivelser
+                   </h3>
+                   
+                   <p className="text-muted-foreground text-xs">
+                     Du kan bruke <strong>markdown</strong> i "beskrivelse"-feltet i Program-arket for å legge til bilder, videoer og formatering.
+                     Vanlig tekst fungerer fortsatt som før - markdown er valgfritt!
+                   </p>
+
+                   <div className="space-y-2">
+                     <p className="font-medium text-xs">Eksempler:</p>
+                     <div className="space-y-1 text-xs font-mono bg-muted/50 p-3 rounded">
+                       <div><strong>Fet skrift:</strong> **tekst** eller __tekst__</div>
+                       <div><strong>Kursiv:</strong> *tekst* eller _tekst_</div>
+                       <div><strong>Liste:</strong> - punkt eller * punkt eller 1. punkt</div>
+                       <div><strong>Lenke:</strong> [Lenketekst](https://example.com)</div>
+                     </div>
+                   </div>
+
+                   <div className="space-y-2">
+                     <p className="font-medium text-xs">Bilder fra Google Drive:</p>
+                     <div className="space-y-1 text-xs">
+                       <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                         <li>Last opp bilde til Google Drive</li>
+                         <li>Høyreklikk på bildet → Del → "Alle med linken"</li>
+                         <li>Kopier delingslenken</li>
+                         <li>I beskrivelse-feltet, skriv: ![Bildetekst](Google-Drive-URL)</li>
+                       </ol>
+                       <div className="font-mono bg-muted/50 p-2 rounded text-xs mt-2">
+                         ![Kenneth](https://drive.google.com/file/d/ABC123/view)
+                       </div>
+                     </div>
+                   </div>
+
+                   <div className="space-y-2">
+                     <p className="font-medium text-xs">Videoer (YouTube/Vimeo):</p>
+                     <div className="space-y-1 text-xs text-muted-foreground">
+                       <p>Lim bare inn YouTube- eller Vimeo-lenken på egen linje:</p>
+                       <div className="font-mono bg-muted/50 p-2 rounded text-xs mt-1">
+                         https://youtube.com/watch?v=xyz
+                       </div>
+                       <p className="text-xs pt-1">Videoen blir automatisk innebygd!</p>
+                     </div>
+                   </div>
+
+                   <div className="rounded-md bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 p-2 mt-2">
+                     <p className="text-green-800 dark:text-green-200 text-xs">
+                       <strong>Viktig:</strong> Vanlig tekst fungerer fortsatt perfekt uten markdown. 
+                       Du trenger kun bruke markdown hvis du vil ha bilder, videoer eller formatering.
+                     </p>
+                   </div>
+                 </div>
+               </div>
+             </CardContent>
           </Card>
         )}
 

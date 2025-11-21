@@ -8,7 +8,65 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ArrowLeft, Clock, MapPin } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import { cn } from '@/lib/utils';
+
+// Convert Google Drive share URLs to direct image URLs
+const convertGoogleDriveUrl = (url: string): string => {
+  const driveRegex = /https:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/;
+  const match = url.match(driveRegex);
+  if (match) {
+    return `https://drive.google.com/uc?export=view&id=${match[1]}`;
+  }
+  return url;
+};
+
+// Convert video URLs to embed URLs
+const getVideoEmbedUrl = (url: string): string | null => {
+  // YouTube patterns
+  const youtubeRegex = /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/;
+  const youtubeMatch = url.match(youtubeRegex);
+  if (youtubeMatch) {
+    return `https://www.youtube.com/embed/${youtubeMatch[1]}`;
+  }
+  
+  // Vimeo pattern
+  const vimeoRegex = /vimeo\.com\/(\d+)/;
+  const vimeoMatch = url.match(vimeoRegex);
+  if (vimeoMatch) {
+    return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+  }
+  
+  return null;
+};
+
+// Custom sanitization schema that allows iframes for videos
+const customSchema = {
+  ...defaultSchema,
+  tagNames: [
+    ...(defaultSchema.tagNames || []),
+    'iframe',
+  ],
+  attributes: {
+    ...defaultSchema.attributes,
+    iframe: [
+      'src',
+      'width',
+      'height',
+      'frameBorder',
+      'allow',
+      'allowFullScreen',
+      'title',
+      ['className', 'class'],
+    ],
+    img: [
+      ...(defaultSchema.attributes?.img || []),
+      ['className', 'class'],
+    ],
+  },
+};
 
 interface Event {
   id: string;
@@ -300,8 +358,63 @@ export default function EventProgram() {
                 </div>
               </DialogHeader>
               {selectedItem.description && (
-                <div className="prose prose-sm max-w-none">
-                  <ReactMarkdown>{selectedItem.description}</ReactMarkdown>
+                <div className="prose prose-sm max-w-none prose-headings:font-semibold prose-a:text-primary prose-strong:text-foreground">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeRaw, [rehypeSanitize, customSchema]]}
+                    components={{
+                      // Custom image renderer with Google Drive URL conversion
+                      img: ({ node, src, alt, ...props }) => {
+                        const convertedSrc = src ? convertGoogleDriveUrl(src) : '';
+                        return (
+                          <img 
+                            src={convertedSrc} 
+                            alt={alt || ''} 
+                            className="w-full rounded-lg my-4"
+                            loading="lazy"
+                            {...props}
+                          />
+                        );
+                      },
+                      // Auto-embed videos from plain URLs
+                      p: ({ node, children, ...props }) => {
+                        // Check if paragraph contains only a URL that's a video
+                        const text = node?.children?.[0];
+                        if (text && 'value' in text && typeof text.value === 'string') {
+                          const videoUrl = getVideoEmbedUrl(text.value.trim());
+                          if (videoUrl) {
+                            return (
+                              <div className="relative w-full my-4" style={{ paddingBottom: '56.25%' }}>
+                                <iframe
+                                  src={videoUrl}
+                                  className="absolute top-0 left-0 w-full h-full rounded-lg"
+                                  frameBorder="0"
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                  allowFullScreen
+                                  title="Embedded video"
+                                />
+                              </div>
+                            );
+                          }
+                        }
+                        return <p {...props}>{children}</p>;
+                      },
+                      // Style links
+                      a: ({ node, children, href, ...props }) => (
+                        <a 
+                          href={href} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline"
+                          {...props}
+                        >
+                          {children}
+                        </a>
+                      ),
+                    }}
+                  >
+                    {selectedItem.description}
+                  </ReactMarkdown>
                 </div>
               )}
             </>
