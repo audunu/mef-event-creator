@@ -23,6 +23,20 @@ const convertGoogleDriveUrl = (url: string): string => {
   return url;
 };
 
+// Preprocess markdown to convert Google Drive URLs in image syntax
+const preprocessMarkdownImages = (markdown: string): string => {
+  // Match ![alt](google drive URL) pattern
+  const imagePattern = /!\[([^\]]*)\]\((https:\/\/drive\.google\.com\/(?:file\/d\/([a-zA-Z0-9_-]+)[^\)]*|open\?id=([a-zA-Z0-9_-]+)[^\)]*))\)/g;
+  
+  return markdown.replace(imagePattern, (match, alt, fullUrl, fileId1, fileId2) => {
+    const fileId = fileId1 || fileId2;
+    if (fileId) {
+      return `![${alt}](https://drive.google.com/uc?export=view&id=${fileId})`;
+    }
+    return match;
+  });
+};
+
 // Convert video URLs to embed URLs
 const getVideoEmbedUrl = (url: string): string | null => {
   // YouTube patterns
@@ -363,12 +377,11 @@ export default function EventProgram() {
                     remarkPlugins={[remarkGfm]}
                     rehypePlugins={[rehypeRaw, [rehypeSanitize, customSchema]]}
                     components={{
-                      // Custom image renderer with Google Drive URL conversion
+                      // Custom image renderer
                       img: ({ node, src, alt, ...props }) => {
-                        const convertedSrc = src ? convertGoogleDriveUrl(src) : '';
                         return (
                           <img 
-                            src={convertedSrc} 
+                            src={src || ''} 
                             alt={alt || ''} 
                             className="w-full rounded-lg my-4"
                             loading="lazy"
@@ -413,7 +426,7 @@ export default function EventProgram() {
                       ),
                     }}
                   >
-                    {selectedItem.description}
+                    {preprocessMarkdownImages(selectedItem.description)}
                   </ReactMarkdown>
                 </div>
               )}
