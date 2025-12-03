@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, Loader2, CheckCircle2, XCircle, HelpCircle, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { InfoSectionManager } from '@/components/InfoSectionManager';
@@ -16,6 +17,12 @@ import { MapUploader } from '@/components/MapUploader';
 import { HeroImageUploader } from '@/components/HeroImageUploader';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import QRCode from 'qrcode';
+
+interface AdminUser {
+  id: string;
+  full_name: string;
+  email: string;
+}
 
 interface EventData {
   name: string;
@@ -46,6 +53,8 @@ export default function EventEditor() {
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const qrCanvasRef = useRef<HTMLCanvasElement>(null);
   const [eventCreatedBy, setEventCreatedBy] = useState<string | null>(null);
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
+  const [selectedOwner, setSelectedOwner] = useState<string>('');
   
   const [formData, setFormData] = useState<EventData>({
     name: '',
@@ -77,6 +86,27 @@ export default function EventEditor() {
       setLoading(false);
     }
   }, [id]);
+
+  // Fetch admin users for ownership dropdown (Super Admin only)
+  useEffect(() => {
+    if (isSuperAdmin && id && id !== 'new') {
+      fetchAdminUsers();
+    }
+  }, [isSuperAdmin, id]);
+
+  const fetchAdminUsers = async () => {
+    try {
+      const { data: profiles, error } = await supabase
+        .from('admin_profiles')
+        .select('id, full_name, email')
+        .order('full_name', { ascending: true });
+
+      if (error) throw error;
+      setAdminUsers(profiles || []);
+    } catch (error) {
+      console.error('Error fetching admin users:', error);
+    }
+  };
 
   useEffect(() => {
     const generateQR = async () => {
@@ -121,6 +151,7 @@ export default function EventEditor() {
     }
 
     setEventCreatedBy(data.created_by);
+    setSelectedOwner(data.created_by || '');
     setFormData({
       name: data.name,
       slug: data.slug,
@@ -170,6 +201,8 @@ export default function EventEditor() {
       enable_info: formData.enable_info,
       google_sheets_url: formData.google_sheets_url || null,
       ...(id === 'new' && { created_by: user?.id }),
+      // Super Admin can change ownership
+      ...(id !== 'new' && isSuperAdmin && selectedOwner && { created_by: selectedOwner }),
     };
 
     let result;
@@ -340,6 +373,30 @@ export default function EventEditor() {
                 placeholder="Oslo"
               />
             </div>
+            {/* Owner dropdown - Super Admin only */}
+            {isSuperAdmin && id && id !== 'new' && adminUsers.length > 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="owner">Ansvarlig / Eier</Label>
+                <Select
+                  value={selectedOwner}
+                  onValueChange={setSelectedOwner}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Velg ansvarlig" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {adminUsers.map((admin) => (
+                      <SelectItem key={admin.id} value={admin.id}>
+                        {admin.full_name} ({admin.email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground">
+                  Endre hvem som eier og kan redigere dette arrangementet
+                </p>
+              </div>
+            )}
             {id && id !== 'new' ? (
               <div className="space-y-2">
                 <Label>Hovedbilde</Label>
