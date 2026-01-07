@@ -15,6 +15,7 @@ import EventParticipants from "./pages/EventParticipants";
 import EventExhibitors from "./pages/EventExhibitors";
 import EventMap from "./pages/EventMap";
 import EventInfo from "./pages/EventInfo";
+import EventSponsors from "./pages/EventSponsors";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/events/:slug/exhibitors" element={<EventExhibitors />} />
             <Route path="/events/:slug/map" element={<EventMap />} />
             <Route path="/events/:slug/info" element={<EventInfo />} />
+            <Route path="/events/:slug/leverandorer" element={<EventSponsors />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

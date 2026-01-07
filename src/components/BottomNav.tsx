@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Calendar, Users, Building2, Map, Info } from 'lucide-react';
+import { Calendar, Users, Building2, Map, Info, Handshake } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface BottomNavProps {
@@ -10,11 +10,18 @@ interface BottomNavProps {
     exhibitors: boolean;
     map: boolean;
     info: boolean;
+    sponsors?: boolean;
+    sponsorsTitle?: string;
   };
 }
 
 export function BottomNav({ eventSlug, modules }: BottomNavProps) {
   const location = useLocation();
+  
+  // Get first word of sponsors title for nav label
+  const sponsorsLabel = modules.sponsorsTitle 
+    ? modules.sponsorsTitle.split(' ')[0] 
+    : 'Leverandører';
   
   const items = [
     { name: 'Program', path: `/events/${eventSlug}/program`, icon: Calendar, enabled: modules.program },
@@ -22,6 +29,7 @@ export function BottomNav({ eventSlug, modules }: BottomNavProps) {
     { name: 'Utstillere', path: `/events/${eventSlug}/exhibitors`, icon: Building2, enabled: modules.exhibitors },
     { name: 'Kart', path: `/events/${eventSlug}/map`, icon: Map, enabled: modules.map },
     { name: 'Info', path: `/events/${eventSlug}/info`, icon: Info, enabled: modules.info },
+    { name: sponsorsLabel, path: `/events/${eventSlug}/leverandorer`, icon: Handshake, enabled: modules.sponsors },
   ].filter(item => item.enabled);
 
   return (

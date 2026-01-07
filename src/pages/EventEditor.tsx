@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { InfoSectionManager } from '@/components/InfoSectionManager';
 import { MapUploader } from '@/components/MapUploader';
 import { HeroImageUploader } from '@/components/HeroImageUploader';
+import { SponsorManager } from '@/components/SponsorManager';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import QRCode from 'qrcode';
 
@@ -39,6 +40,8 @@ interface EventData {
   enable_info: boolean;
   google_sheets_url: string;
   last_synced_at: string | null;
+  sponsors_module_enabled: boolean;
+  sponsors_module_title: string;
 }
 
 export default function EventEditor() {
@@ -71,6 +74,8 @@ export default function EventEditor() {
     enable_info: true,
     google_sheets_url: '',
     last_synced_at: null,
+    sponsors_module_enabled: false,
+    sponsors_module_title: 'Leverandører',
   });
 
   useEffect(() => {
@@ -167,6 +172,8 @@ export default function EventEditor() {
       enable_info: data.enable_info,
       google_sheets_url: data.google_sheets_url || '',
       last_synced_at: data.last_synced_at,
+      sponsors_module_enabled: data.sponsors_module_enabled || false,
+      sponsors_module_title: data.sponsors_module_title || 'Leverandører',
     });
     setLoading(false);
   };
@@ -200,6 +207,8 @@ export default function EventEditor() {
       enable_map: formData.enable_map,
       enable_info: formData.enable_info,
       google_sheets_url: formData.google_sheets_url || null,
+      sponsors_module_enabled: formData.sponsors_module_enabled,
+      sponsors_module_title: formData.sponsors_module_title || 'Leverandører',
       ...(id === 'new' && { created_by: user?.id }),
       // Super Admin can change ownership
       ...(id !== 'new' && isSuperAdmin && selectedOwner && { created_by: selectedOwner }),
@@ -520,6 +529,34 @@ export default function EventEditor() {
               />
               <Label htmlFor="enable_info" className="font-normal cursor-pointer">Praktisk info</Label>
             </div>
+            <Separator className="my-2" />
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="sponsors_module_enabled"
+                  checked={formData.sponsors_module_enabled}
+                  onCheckedChange={(checked) => setFormData({ ...formData, sponsors_module_enabled: checked as boolean })}
+                />
+                <Label htmlFor="sponsors_module_enabled" className="font-normal cursor-pointer">Leverandører / Partnere</Label>
+              </div>
+              <p className="text-sm text-muted-foreground ml-6">
+                Vis logoer for leverandører, samarbeidspartnere eller sponsorer
+              </p>
+              {formData.sponsors_module_enabled && (
+                <div className="ml-6 mt-2 space-y-2">
+                  <Label htmlFor="sponsors_module_title">Modulnavn (vises på forsiden)</Label>
+                  <Input
+                    id="sponsors_module_title"
+                    value={formData.sponsors_module_title}
+                    onChange={(e) => setFormData({ ...formData, sponsors_module_title: e.target.value })}
+                    placeholder="Leverandører"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Skriv inn ønsket navn, f.eks. 'Samarbeidspartnere', 'Sponsorer', 'Fagturleverandører'
+                  </p>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 
@@ -680,6 +717,11 @@ export default function EventEditor() {
         {/* Kart Upload */}
         {formData.enable_map && id !== 'new' && (
           <MapUploader eventId={id} />
+        )}
+
+        {/* Sponsors Management */}
+        {formData.sponsors_module_enabled && id !== 'new' && (
+          <SponsorManager eventId={id} />
         )}
 
         {/* Save buttons */}
