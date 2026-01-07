@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { MEFLogo } from '@/components/MEFLogo';
 import { Button } from '@/components/ui/button';
-import { Calendar, Users, Building2, Map, Info } from 'lucide-react';
+import { Calendar, Users, Building2, Map, Info, Handshake } from 'lucide-react';
 import { formatEventDateRange } from '@/lib/dateUtils';
 
 interface Event {
@@ -19,6 +19,8 @@ interface Event {
   enable_exhibitors: boolean;
   enable_map: boolean;
   enable_info: boolean;
+  sponsors_module_enabled: boolean;
+  sponsors_module_title: string | null;
 }
 
 export default function EventHome() {
@@ -59,6 +61,8 @@ export default function EventHome() {
     );
   }
 
+  const sponsorsTitle = event.sponsors_module_title || 'Leverandører';
+
   const modules = [
     { 
       name: 'Program', 
@@ -94,6 +98,13 @@ export default function EventHome() {
       icon: Info, 
       enabled: event.enable_info,
       description: 'Nyttig informasjon'
+    },
+    { 
+      name: sponsorsTitle, 
+      path: `/events/${slug}/leverandorer`, 
+      icon: Handshake, 
+      enabled: event.sponsors_module_enabled,
+      description: 'Se våre samarbeidspartnere'
     },
   ].filter(m => m.enabled);
 

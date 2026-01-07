@@ -56,6 +56,47 @@ export type Database = {
         }
         Relationships: []
       }
+      event_sponsors: {
+        Row: {
+          created_at: string
+          display_order: number | null
+          event_id: string
+          id: string
+          logo_url: string
+          name: string
+          updated_at: string
+          website_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number | null
+          event_id: string
+          id?: string
+          logo_url: string
+          name: string
+          updated_at?: string
+          website_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          display_order?: number | null
+          event_id?: string
+          id?: string
+          logo_url?: string
+          name?: string
+          updated_at?: string
+          website_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_sponsors_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           created_at: string | null
@@ -75,6 +116,8 @@ export type Database = {
           name: string
           published: boolean | null
           slug: string
+          sponsors_module_enabled: boolean | null
+          sponsors_module_title: string | null
           updated_at: string | null
         }
         Insert: {
@@ -95,6 +138,8 @@ export type Database = {
           name: string
           published?: boolean | null
           slug: string
+          sponsors_module_enabled?: boolean | null
+          sponsors_module_title?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -115,6 +160,8 @@ export type Database = {
           name?: string
           published?: boolean | null
           slug?: string
+          sponsors_module_enabled?: boolean | null
+          sponsors_module_title?: string | null
           updated_at?: string | null
         }
         Relationships: []
