@@ -366,6 +366,15 @@ serve(async (req) => {
           const descriptionRaw = getTrimmed(row.beskrivelse || row.Beskrivelse || row.description || row.Description);
           const locationRaw = getTrimmed(row.sted || row.Sted || row.location || row.Location);
           const categoryRaw = getTrimmed(row.kategori || row.Kategori || row.category || row.Category);
+          const locationUrlRaw = getTrimmed(row.sted_url || row.Sted_url || row.location_url || row.Location_url);
+          
+          // Process location URL - ensure it starts with http(s)://
+          let locationUrl: string | null = null;
+          if (locationUrlRaw) {
+            locationUrl = locationUrlRaw.startsWith('http://') || locationUrlRaw.startsWith('https://') 
+              ? locationUrlRaw 
+              : `https://${locationUrlRaw}`;
+          }
           
           // Parse and validate
           const day = parseFlexibleDate(dayRaw);
@@ -392,6 +401,7 @@ serve(async (req) => {
             title: titleRaw || 'Untitled',
             description: descriptionRaw,
             location: locationRaw,
+            location_url: locationUrl,
             category: categoryRaw, // Store comma-separated categories as-is
           };
         })

@@ -6,7 +6,7 @@ import { BottomNav } from '@/components/BottomNav';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ArrowLeft, Clock, MapPin } from 'lucide-react';
+import { ArrowLeft, Clock, MapPin, ExternalLink } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
 
@@ -29,6 +29,7 @@ interface ProgramItem {
   title: string;
   description: string | null;
   location: string | null;
+  location_url: string | null;
   category: string | null;
 }
 
@@ -264,7 +265,20 @@ export default function EventProgram() {
                             {item.location && (
                               <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
                                 <MapPin className="h-3 w-3" />
-                                {item.location}
+                                {item.location_url ? (
+                                  <a 
+                                    href={item.location_url} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-primary hover:underline inline-flex items-center gap-1"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {item.location}
+                                    <ExternalLink className="h-3 w-3" />
+                                  </a>
+                                ) : (
+                                  item.location
+                                )}
                               </div>
                             )}
                           </div>
@@ -294,7 +308,19 @@ export default function EventProgram() {
                   {selectedItem.location && (
                     <div className="flex items-center gap-2">
                       <MapPin className="h-4 w-4" />
-                      {selectedItem.location}
+                      {selectedItem.location_url ? (
+                        <a 
+                          href={selectedItem.location_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline inline-flex items-center gap-1"
+                        >
+                          {selectedItem.location}
+                          <ExternalLink className="h-4 w-4" />
+                        </a>
+                      ) : (
+                        selectedItem.location
+                      )}
                     </div>
                   )}
                 </div>
