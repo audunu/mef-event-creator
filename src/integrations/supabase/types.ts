@@ -311,6 +311,7 @@ export type Database = {
           external_id: string | null
           id: string
           location: string | null
+          location_url: string | null
           start_time: string
           title: string
         }
@@ -324,6 +325,7 @@ export type Database = {
           external_id?: string | null
           id?: string
           location?: string | null
+          location_url?: string | null
           start_time: string
           title: string
         }
@@ -337,6 +339,7 @@ export type Database = {
           external_id?: string | null
           id?: string
           location?: string | null
+          location_url?: string | null
           start_time?: string
           title?: string
         }
