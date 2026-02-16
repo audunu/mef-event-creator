@@ -267,6 +267,7 @@ export type Database = {
       }
       participants: {
         Row: {
+          category: string | null
           company: string | null
           created_at: string | null
           event_id: string
@@ -275,6 +276,7 @@ export type Database = {
           name: string
         }
         Insert: {
+          category?: string | null
           company?: string | null
           created_at?: string | null
           event_id: string
@@ -283,6 +285,7 @@ export type Database = {
           name: string
         }
         Update: {
+          category?: string | null
           company?: string | null
           created_at?: string | null
           event_id?: string

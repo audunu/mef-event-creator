@@ -464,6 +464,7 @@ serve(async (req) => {
           
           const nameRaw = getTrimmed(row.navn || row.Navn || row.name || row.Name);
           const companyRaw = getTrimmed(row.bedrift || row.Bedrift || row.company || row.Company);
+          const categoryRaw = getTrimmed(row.kategori || row.Kategori || row.category || row.Category);
           
           if (!nameRaw) {
             console.warn(`Row ${rowNum}: Missing required name`);
@@ -474,6 +475,7 @@ serve(async (req) => {
             external_id: `d${rowNum}`,
             name: nameRaw || 'Unknown',
             company: companyRaw,
+            category: categoryRaw,
           };
         })
         .filter((item: any) => {
