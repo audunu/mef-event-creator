@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { MEFLogo } from '@/components/MEFLogo';
@@ -24,6 +24,7 @@ interface Participant {
   id: string;
   name: string;
   company: string | null;
+  category: string | null;
 }
 
 interface GroupedParticipants {
@@ -33,18 +34,25 @@ interface GroupedParticipants {
 
 type SortMode = 'name' | 'company';
 
+const norwegianSort = (a: string, b: string) =>
+  a.localeCompare(b, 'no', { sensitivity: 'base' });
+
+function parseCategories(category: string | null): string[] {
+  if (!category) return [];
+  return category.split(',').map(c => c.trim()).filter(c => c.length > 0);
+}
+
 export default function EventParticipants() {
   const { slug } = useParams();
   const navigate = useNavigate();
   const [event, setEvent] = useState<Event | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
-  const [filteredParticipants, setFilteredParticipants] = useState<Participant[]>([]);
-  const [groupedParticipants, setGroupedParticipants] = useState<GroupedParticipants[]>([]);
   const [search, setSearch] = useState('');
   const [sortMode, setSortMode] = useState<SortMode>(() => {
     const saved = localStorage.getItem('participantsSortMode');
     return (saved as SortMode) || 'company';
   });
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -54,49 +62,6 @@ export default function EventParticipants() {
   useEffect(() => {
     localStorage.setItem('participantsSortMode', sortMode);
   }, [sortMode]);
-
-  useEffect(() => {
-    const norwegianSort = (a: string, b: string) => {
-      return a.localeCompare(b, 'no', { sensitivity: 'base' });
-    };
-
-    let filtered = participants;
-    
-    if (search) {
-      filtered = participants.filter(p =>
-        p.name.toLowerCase().includes(search.toLowerCase()) ||
-        p.company?.toLowerCase().includes(search.toLowerCase())
-      );
-    }
-
-    if (sortMode === 'name') {
-      // Sort by person name
-      const sorted = [...filtered].sort((a, b) => norwegianSort(a.name, b.name));
-      setFilteredParticipants(sorted);
-      setGroupedParticipants([]);
-    } else {
-      // Group by company
-      const groups = filtered.reduce((acc, participant) => {
-        const company = participant.company || 'Ingen bedrift';
-        if (!acc[company]) {
-          acc[company] = [];
-        }
-        acc[company].push(participant);
-        return acc;
-      }, {} as Record<string, Participant[]>);
-
-      // Sort companies alphabetically, then people within each company
-      const sorted = Object.entries(groups)
-        .sort(([a], [b]) => norwegianSort(a, b))
-        .map(([company, participants]) => ({
-          company,
-          participants: participants.sort((a, b) => norwegianSort(a.name, b.name))
-        }));
-
-      setGroupedParticipants(sorted);
-      setFilteredParticipants([]);
-    }
-  }, [search, participants, sortMode]);
 
   const fetchData = async () => {
     const { data: eventData } = await supabase
@@ -108,7 +73,7 @@ export default function EventParticipants() {
 
     if (eventData) {
       setEvent(eventData);
-      
+
       const { data: participantData } = await supabase
         .from('participants')
         .select('*')
@@ -116,10 +81,82 @@ export default function EventParticipants() {
         .order('name', { ascending: true });
 
       setParticipants(participantData || []);
-      setFilteredParticipants(participantData || []);
     }
     setLoading(false);
   };
+
+  // Check if any participant has category data
+  const hasCategories = useMemo(
+    () => participants.some(p => p.category && p.category.trim().length > 0),
+    [participants]
+  );
+
+  // Extract unique categories
+  const uniqueCategories = useMemo(() => {
+    const catSet = new Set<string>();
+    let hasEmpty = false;
+    participants.forEach(p => {
+      const cats = parseCategories(p.category);
+      if (cats.length === 0 && hasCategories) hasEmpty = true;
+      cats.forEach(c => catSet.add(c));
+    });
+    const sorted = Array.from(catSet).sort((a, b) => norwegianSort(a, b));
+    if (hasEmpty) sorted.push('Ingen kategori');
+    return sorted;
+  }, [participants, hasCategories]);
+
+  // Filtered results
+  const displayData = useMemo(() => {
+    // 1. Filter by category
+    let filtered = participants;
+    if (selectedCategory) {
+      if (selectedCategory === 'Ingen kategori') {
+        filtered = participants.filter(p => !p.category || p.category.trim().length === 0);
+      } else {
+        filtered = participants.filter(p => {
+          const cats = parseCategories(p.category);
+          return cats.some(c => c.toLowerCase() === selectedCategory.toLowerCase());
+        });
+      }
+    }
+
+    // 2. Filter by search
+    if (search) {
+      const q = search.toLowerCase();
+      filtered = filtered.filter(p =>
+        p.name.toLowerCase().includes(q) ||
+        p.company?.toLowerCase().includes(q) ||
+        p.category?.toLowerCase().includes(q)
+      );
+    }
+
+    // 3. Sort/group
+    if (sortMode === 'name') {
+      return {
+        mode: 'name' as const,
+        items: [...filtered].sort((a, b) => norwegianSort(a.name, b.name)),
+        total: filtered.length,
+      };
+    } else {
+      const groups: Record<string, Participant[]> = {};
+      filtered.forEach(p => {
+        const company = p.company || 'Ingen bedrift';
+        if (!groups[company]) groups[company] = [];
+        groups[company].push(p);
+      });
+      const sorted = Object.entries(groups)
+        .sort(([a], [b]) => norwegianSort(a, b))
+        .map(([company, parts]) => ({
+          company,
+          participants: parts.sort((a, b) => norwegianSort(a.name, b.name)),
+        }));
+      return {
+        mode: 'company' as const,
+        groups: sorted,
+        total: sorted.reduce((sum, g) => sum + g.participants.length, 0),
+      };
+    }
+  }, [participants, selectedCategory, search, sortMode]);
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Laster...</div>;
@@ -128,6 +165,8 @@ export default function EventParticipants() {
   if (!event) {
     return <div className="min-h-screen flex items-center justify-center">Arrangement ikke funnet</div>;
   }
+
+  const totalShown = displayData.mode === 'name' ? displayData.items.length : displayData.total;
 
   return (
     <div className="min-h-screen bg-secondary/20 pb-20">
@@ -146,12 +185,32 @@ export default function EventParticipants() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input
-              placeholder="Søk etter navn eller bedrift..."
+              placeholder={hasCategories ? "Søk etter navn, bedrift eller kategori..." : "Søk etter navn eller bedrift..."}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-10"
             />
           </div>
+
+          {hasCategories && uniqueCategories.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={!selectedCategory ? 'default' : 'outline'}
+                onClick={() => setSelectedCategory(null)}
+              >
+                Alle
+              </Button>
+              {uniqueCategories.map(cat => (
+                <Button
+                  key={cat}
+                  variant={selectedCategory === cat ? 'default' : 'outline'}
+                  onClick={() => setSelectedCategory(cat)}
+                >
+                  {cat}
+                </Button>
+              ))}
+            </div>
+          )}
 
           <ToggleGroup type="single" value={sortMode} onValueChange={(value) => value && setSortMode(value as SortMode)} className="justify-start">
             <ToggleGroupItem value="company" className="flex-1 sm:flex-initial">
@@ -163,35 +222,31 @@ export default function EventParticipants() {
           </ToggleGroup>
         </div>
 
-        {(sortMode === 'name' ? filteredParticipants.length === 0 : groupedParticipants.length === 0) ? (
+        {totalShown === 0 ? (
           <Card>
             <CardContent className="py-12 text-center text-muted-foreground">
               {search ? 'Ingen treff' : 'Ingen deltakere ennå'}
             </CardContent>
           </Card>
-        ) : sortMode === 'name' ? (
+        ) : displayData.mode === 'name' ? (
           <div className="space-y-2">
-            {filteredParticipants.map((participant) => (
-              <Card key={participant.id}>
-                <CardContent className="py-4">
-                  <div className="font-semibold">{participant.name}</div>
-                  {participant.company && (
-                    <div className="text-sm text-muted-foreground">{participant.company}</div>
-                  )}
-                </CardContent>
-              </Card>
+            {displayData.items.map(participant => (
+              <ParticipantCard key={participant.id} participant={participant} showCategory={hasCategories} />
             ))}
           </div>
         ) : (
           <div className="space-y-3">
-            {groupedParticipants.map((group) => (
+            {displayData.groups.map(group => (
               <Card key={group.company}>
                 <CardContent className="py-4">
                   <div className="font-bold text-base mb-2">{group.company}</div>
                   <div className="space-y-1">
-                    {group.participants.map((participant) => (
-                      <div key={participant.id} className="text-sm text-muted-foreground pl-2">
-                        {participant.name}
+                    {group.participants.map(participant => (
+                      <div key={participant.id} className="pl-2">
+                        <div className="text-sm text-muted-foreground">{participant.name}</div>
+                        {hasCategories && participant.category && (
+                          <div className="text-xs text-muted-foreground/70 pl-0">{participant.category}</div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -202,12 +257,12 @@ export default function EventParticipants() {
         )}
 
         <div className="mt-4 text-sm text-muted-foreground text-center">
-          Viser {sortMode === 'name' ? filteredParticipants.length : groupedParticipants.reduce((sum, g) => sum + g.participants.length, 0)} av {participants.length} deltakere
+          Viser {totalShown} av {participants.length} deltakere
         </div>
       </div>
 
-      <BottomNav 
-        eventSlug={slug!} 
+      <BottomNav
+        eventSlug={slug!}
         modules={{
           program: event.enable_program,
           participants: event.enable_participants,
@@ -217,5 +272,21 @@ export default function EventParticipants() {
         }}
       />
     </div>
+  );
+}
+
+function ParticipantCard({ participant, showCategory }: { participant: Participant; showCategory: boolean }) {
+  return (
+    <Card>
+      <CardContent className="py-4">
+        <div className="font-semibold">{participant.name}</div>
+        {participant.company && (
+          <div className="text-sm text-muted-foreground">{participant.company}</div>
+        )}
+        {showCategory && participant.category && (
+          <div className="text-xs text-muted-foreground/70">{participant.category}</div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
