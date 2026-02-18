@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Pencil, Trash2, Plus } from 'lucide-react';
+import { Pencil, Trash2, Plus, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
@@ -16,6 +16,7 @@ interface InfoSection {
   title: string;
   content: string;
   order_index: number;
+  image_url: string | null;
 }
 
 interface InfoSectionManagerProps {
@@ -29,11 +30,14 @@ export function InfoSectionManager({ eventId }: InfoSectionManagerProps) {
   const [editingSection, setEditingSection] = useState<InfoSection | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [sectionToDelete, setSectionToDelete] = useState<string | null>(null);
-  
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [formData, setFormData] = useState({
     title: '',
     content: '',
     order_index: 0,
+    image_url: null as string | null,
   });
 
   useEffect(() => {
@@ -48,7 +52,7 @@ export function InfoSectionManager({ eventId }: InfoSectionManagerProps) {
       .order('order_index', { ascending: true });
 
     if (!error && data) {
-      setSections(data);
+      setSections(data as InfoSection[]);
     }
     setLoading(false);
   };
@@ -60,6 +64,7 @@ export function InfoSectionManager({ eventId }: InfoSectionManagerProps) {
         title: section.title,
         content: section.content,
         order_index: section.order_index,
+        image_url: section.image_url ?? null,
       });
     } else {
       setEditingSection(null);
@@ -67,9 +72,50 @@ export function InfoSectionManager({ eventId }: InfoSectionManagerProps) {
         title: '',
         content: '',
         order_index: sections.length,
+        image_url: null,
       });
     }
     setDialogOpen(true);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Kun JPG, PNG og WebP er tillatt');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const fileName = `info-sections/${eventId}/${Date.now()}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('event-images')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from('event-images')
+        .getPublicUrl(fileName);
+
+      setFormData((prev) => ({ ...prev, image_url: urlData.publicUrl }));
+      toast.success('Bilde lastet opp');
+    } catch (err: unknown) {
+      console.error('Image upload error:', err);
+      toast.error('Kunne ikke laste opp bilde');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setFormData((prev) => ({ ...prev, image_url: null }));
   };
 
   const handleSave = async () => {
@@ -83,6 +129,7 @@ export function InfoSectionManager({ eventId }: InfoSectionManagerProps) {
       title: formData.title,
       content: formData.content,
       order_index: formData.order_index,
+      image_url: formData.image_url,
     };
 
     let error;
@@ -101,7 +148,6 @@ export function InfoSectionManager({ eventId }: InfoSectionManagerProps) {
 
     if (error) {
       console.error('Info section save error:', error);
-      console.error('Attempted to save data:', sectionData);
       toast.error(`Kunne ikke lagre info-kort: ${error.message}`);
     } else {
       toast.success(editingSection ? 'Info-kort oppdatert' : 'Info-kort opprettet');
@@ -150,12 +196,21 @@ export function InfoSectionManager({ eventId }: InfoSectionManagerProps) {
           <div className="space-y-3">
             {sections.map((section) => (
               <div key={section.id} className="flex items-start justify-between p-4 border rounded-lg">
-                <div className="flex-1">
-                  <h4 className="font-bold text-lg">{section.title}</h4>
-                  <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                    {section.content.substring(0, 100)}
-                    {section.content.length > 100 && '...'}
-                  </p>
+                <div className="flex-1 flex gap-3 items-start">
+                  {section.image_url && (
+                    <img
+                      src={section.image_url}
+                      alt={section.title}
+                      className="w-12 h-12 object-cover rounded flex-shrink-0"
+                    />
+                  )}
+                  <div>
+                    <h4 className="font-bold text-lg">{section.title}</h4>
+                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                      {section.content.substring(0, 100)}
+                      {section.content.length > 100 && '...'}
+                    </p>
+                  </div>
                 </div>
                 <div className="flex gap-2 ml-4">
                   <Button
@@ -221,6 +276,55 @@ export function InfoSectionManager({ eventId }: InfoSectionManagerProps) {
                   }}
                 />
               </div>
+
+              {/* Image upload */}
+              <div className="space-y-2">
+                <Label>Bilde (valgfritt)</Label>
+                {formData.image_url ? (
+                  <div className="relative inline-block">
+                    <img
+                      src={formData.image_url}
+                      alt="Forhåndsvisning"
+                      className="max-h-48 rounded-lg border object-contain"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute -top-2 -right-2 h-6 w-6"
+                      onClick={handleRemoveImage}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Klikk × for å fjerne bildet
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={handleImageUpload}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                    >
+                      <Upload className="mr-2 h-4 w-4" />
+                      {uploading ? 'Laster opp...' : 'Last opp bilde'}
+                    </Button>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      JPG, PNG eller WebP. Vises under tekstinnholdet på kortet.
+                    </p>
+                  </div>
+                )}
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="order">Rekkefølge (valgfritt)</Label>
                 <Input
