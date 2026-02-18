@@ -207,6 +207,7 @@ export type Database = {
           created_at: string | null
           event_id: string
           id: string
+          image_url: string | null
           order_index: number | null
           title: string
         }
@@ -215,6 +216,7 @@ export type Database = {
           created_at?: string | null
           event_id: string
           id?: string
+          image_url?: string | null
           order_index?: number | null
           title: string
         }
@@ -223,6 +225,7 @@ export type Database = {
           created_at?: string | null
           event_id?: string
           id?: string
+          image_url?: string | null
           order_index?: number | null
           title?: string
         }

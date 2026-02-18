@@ -5,7 +5,8 @@ import { MEFLogo } from '@/components/MEFLogo';
 import { BottomNav } from '@/components/BottomNav';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft } from 'lucide-react';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { ArrowLeft, Maximize2 } from 'lucide-react';
 import parse from 'html-react-parser';
 
 interface Event {
@@ -23,6 +24,7 @@ interface InfoSection {
   id: string;
   title: string;
   content: string | null;
+  image_url: string | null;
 }
 
 export default function EventInfo() {
@@ -31,6 +33,7 @@ export default function EventInfo() {
   const [event, setEvent] = useState<Event | null>(null);
   const [sections, setSections] = useState<InfoSection[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -53,7 +56,7 @@ export default function EventInfo() {
         .eq('event_id', eventData.id)
         .order('order_index', { ascending: true });
 
-      setSections(infoData || []);
+      setSections((infoData as InfoSection[]) || []);
     }
     setLoading(false);
   };
@@ -88,20 +91,61 @@ export default function EventInfo() {
         ) : (
           <div className="space-y-4">
             {sections.map((section) => (
-              <Card key={section.id}>
+              <Card key={section.id} className="overflow-hidden">
                 <CardHeader>
                   <CardTitle className="text-lg">{section.title}</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="prose prose-sm max-w-none">
-                    {parse(section.content || '')}
-                  </div>
-                </CardContent>
+                {(section.content || section.image_url) && (
+                  <CardContent className="pt-0 space-y-4">
+                    {section.content && (
+                      <div className="prose prose-sm max-w-none">
+                        {parse(section.content)}
+                      </div>
+                    )}
+                    {section.image_url && (
+                      <div className="relative group">
+                        <img
+                          src={section.image_url}
+                          alt={section.title}
+                          className="w-full h-auto rounded-lg cursor-zoom-in"
+                          onClick={() => setLightboxImage(section.image_url)}
+                        />
+                        <Button
+                          variant="secondary"
+                          size="icon"
+                          className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => setLightboxImage(section.image_url)}
+                        >
+                          <Maximize2 className="h-4 w-4" />
+                        </Button>
+                        <p className="text-xs text-muted-foreground text-center mt-2">
+                          Klikk på bildet for å zoome
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                )}
               </Card>
             ))}
           </div>
         )}
       </div>
+
+      {/* Lightbox */}
+      <Dialog open={!!lightboxImage} onOpenChange={() => setLightboxImage(null)}>
+        <DialogContent className="max-w-[95vw] max-h-[95vh] p-0">
+          {lightboxImage && (
+            <div className="overflow-auto w-full h-full">
+              <img
+                src={lightboxImage}
+                alt="Forstørret visning"
+                className="w-full h-auto"
+                style={{ minHeight: '100%' }}
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <BottomNav 
         eventSlug={slug!} 
