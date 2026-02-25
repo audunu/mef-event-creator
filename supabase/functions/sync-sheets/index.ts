@@ -367,6 +367,8 @@ serve(async (req) => {
           const locationRaw = getTrimmed(row.sted || row.Sted || row.location || row.Location);
           const categoryRaw = getTrimmed(row.kategori || row.Kategori || row.category || row.Category);
           const locationUrlRaw = getTrimmed(row.sted_url || row.Sted_url || row.location_url || row.Location_url);
+          const imageUrlRaw = getTrimmed(row.bilde_url || row.Bilde_url || row.image_url || row.Image_url);
+          const imageUrl2Raw = getTrimmed(row.bilde_url_2 || row.Bilde_url_2 || row.image_url_2 || row.Image_url_2);
           
           // Process location URL - ensure it starts with http(s)://
           let locationUrl: string | null = null;
@@ -375,6 +377,23 @@ serve(async (req) => {
               ? locationUrlRaw 
               : `https://${locationUrlRaw}`;
           }
+
+          // Helper to convert Google Drive share URLs to direct image URLs
+          function convertGoogleDriveUrl(url: string | null): string | null {
+            if (!url) return null;
+            // Already a direct uc?export URL
+            if (url.includes('drive.google.com/uc?')) return url;
+            // /file/d/FILE_ID/...
+            const fileMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+            if (fileMatch) return `https://drive.google.com/uc?export=view&id=${fileMatch[1]}`;
+            // /open?id=FILE_ID
+            const openMatch = url.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
+            if (openMatch) return `https://drive.google.com/uc?export=view&id=${openMatch[1]}`;
+            return url;
+          }
+
+          const imageUrl = convertGoogleDriveUrl(imageUrlRaw);
+          const imageUrl2 = convertGoogleDriveUrl(imageUrl2Raw);
           
           // Parse and validate
           const day = parseFlexibleDate(dayRaw);
@@ -402,7 +421,9 @@ serve(async (req) => {
             description: descriptionRaw,
             location: locationRaw,
             location_url: locationUrl,
-            category: categoryRaw, // Store comma-separated categories as-is
+            category: categoryRaw,
+            image_url: imageUrl,
+            image_url_2: imageUrl2,
           };
         })
         .filter((item: any) => {
