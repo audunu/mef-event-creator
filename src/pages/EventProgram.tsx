@@ -10,6 +10,22 @@ import { ArrowLeft, Clock, MapPin, ExternalLink } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
 
+function convertGoogleDriveUrl(url: string | null): string | null {
+  if (!url) return null;
+  if (url.includes('drive.google.com/uc?')) return url;
+  const fileMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (fileMatch) return `https://drive.google.com/uc?export=view&id=${fileMatch[1]}`;
+  const openMatch = url.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
+  if (openMatch) return `https://drive.google.com/uc?export=view&id=${openMatch[1]}`;
+  return url;
+}
+
+function ImageWithFallback({ src, alt, className, style }: { src: string; alt: string; className?: string; style?: React.CSSProperties }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return null;
+  return <img src={src} alt={alt} className={className} style={style} loading="lazy" onError={() => setFailed(true)} />;
+}
+
 interface Event {
   id: string;
   slug: string;
@@ -31,6 +47,8 @@ interface ProgramItem {
   location: string | null;
   location_url: string | null;
   category: string | null;
+  image_url: string | null;
+  image_url_2: string | null;
 }
 
 export default function EventProgram() {
@@ -247,7 +265,10 @@ export default function EventProgram() {
                   })}
                 </h2>
                 <div className="space-y-2">
-                  {dayItems.map((item) => (
+                  {dayItems.map((item) => {
+                    const img1 = convertGoogleDriveUrl(item.image_url);
+                    const img2 = convertGoogleDriveUrl(item.image_url_2);
+                    return (
                     <Card 
                       key={item.id} 
                       className="cursor-pointer hover:border-primary transition-colors"
@@ -255,37 +276,48 @@ export default function EventProgram() {
                     >
                       <CardHeader className="pb-3">
                         <div className="flex items-start gap-3">
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground min-w-[100px]">
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground" style={{ minWidth: '82px', flexShrink: 0 }}>
                             <Clock className="h-4 w-4" />
                             {item.start_time.slice(0, 5)}
                             {item.end_time && ` - ${item.end_time.slice(0, 5)}`}
                           </div>
-                          <div className="flex-1">
-                            <CardTitle className="text-base">{item.title}</CardTitle>
-                            {item.location && (
-                              <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
-                                <MapPin className="h-3 w-3" />
-                                {item.location_url ? (
-                                  <a 
-                                    href={item.location_url} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="text-primary hover:underline inline-flex items-center gap-1"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    {item.location}
-                                    <ExternalLink className="h-3 w-3" />
-                                  </a>
-                                ) : (
-                                  item.location
-                                )}
+                          <div className="flex-1 min-w-0 flex items-start gap-3">
+                            <div className="flex-1 min-w-0">
+                              <CardTitle className="text-base">{item.title}</CardTitle>
+                              {item.location && (
+                                <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
+                                  <MapPin className="h-3 w-3" />
+                                  {item.location_url ? (
+                                    <a 
+                                      href={item.location_url} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="text-primary hover:underline inline-flex items-center gap-1"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      {item.location}
+                                      <ExternalLink className="h-3 w-3" />
+                                    </a>
+                                  ) : (
+                                    item.location
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            {img1 && img2 ? (
+                              <div className="flex gap-1" style={{ flexShrink: 0 }}>
+                                <ImageWithFallback src={img1} alt="" className="rounded-lg object-cover" style={{ width: 44, height: 44, border: '1px solid #e5e7eb' }} />
+                                <ImageWithFallback src={img2} alt="" className="rounded-lg object-cover" style={{ width: 44, height: 44, border: '1px solid #e5e7eb' }} />
                               </div>
-                            )}
+                            ) : img1 ? (
+                              <ImageWithFallback src={img1} alt="" className="rounded-lg object-cover" style={{ width: 52, height: 52, flexShrink: 0, border: '1px solid #e5e7eb' }} />
+                            ) : null}
                           </div>
                         </div>
                       </CardHeader>
                     </Card>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ))}
@@ -295,43 +327,57 @@ export default function EventProgram() {
 
       <Dialog open={!!selectedItem} onOpenChange={() => setSelectedItem(null)}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          {selectedItem && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="text-xl">{selectedItem.title}</DialogTitle>
-                <div className="flex flex-col gap-2 text-sm text-muted-foreground pt-2">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
-                    {selectedItem.start_time.slice(0, 5)}
-                    {selectedItem.end_time && ` - ${selectedItem.end_time.slice(0, 5)}`}
+          {selectedItem && (() => {
+              const modalImg1 = convertGoogleDriveUrl(selectedItem.image_url);
+              const modalImg2 = convertGoogleDriveUrl(selectedItem.image_url_2);
+              return (
+              <>
+                {(modalImg1 || modalImg2) && (
+                  <div className={cn("flex gap-2 mb-2", modalImg1 && modalImg2 ? "" : "")}>
+                    {modalImg1 && (
+                      <ImageWithFallback src={modalImg1} alt="" className={cn("rounded-lg object-cover", modalImg2 ? "w-1/2" : "w-full")} style={{ maxHeight: 200 }} />
+                    )}
+                    {modalImg2 && (
+                      <ImageWithFallback src={modalImg2} alt="" className={cn("rounded-lg object-cover", modalImg1 ? "w-1/2" : "w-full")} style={{ maxHeight: 200 }} />
+                    )}
                   </div>
-                  {selectedItem.location && (
+                )}
+                <DialogHeader>
+                  <DialogTitle className="text-xl">{selectedItem.title}</DialogTitle>
+                  <div className="flex flex-col gap-2 text-sm text-muted-foreground pt-2">
                     <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      {selectedItem.location_url ? (
-                        <a 
-                          href={selectedItem.location_url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-primary hover:underline inline-flex items-center gap-1"
-                        >
-                          {selectedItem.location}
-                          <ExternalLink className="h-4 w-4" />
-                        </a>
-                      ) : (
-                        selectedItem.location
-                      )}
+                      <Clock className="h-4 w-4" />
+                      {selectedItem.start_time.slice(0, 5)}
+                      {selectedItem.end_time && ` - ${selectedItem.end_time.slice(0, 5)}`}
                     </div>
-                  )}
-                </div>
-              </DialogHeader>
-              {selectedItem.description && (
-                <div className="prose prose-sm max-w-none">
-                  <ReactMarkdown>{selectedItem.description}</ReactMarkdown>
-                </div>
-              )}
-            </>
-          )}
+                    {selectedItem.location && (
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
+                        {selectedItem.location_url ? (
+                          <a 
+                            href={selectedItem.location_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline inline-flex items-center gap-1"
+                          >
+                            {selectedItem.location}
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        ) : (
+                          selectedItem.location
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </DialogHeader>
+                {selectedItem.description && (
+                  <div className="prose prose-sm max-w-none">
+                    <ReactMarkdown>{selectedItem.description}</ReactMarkdown>
+                  </div>
+                )}
+              </>
+              );
+            })()}
         </DialogContent>
       </Dialog>
 
