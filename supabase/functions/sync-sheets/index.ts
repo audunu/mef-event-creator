@@ -381,14 +381,22 @@ serve(async (req) => {
           // Helper to convert Google Drive share URLs to direct image URLs
           function convertGoogleDriveUrl(url: string | null): string | null {
             if (!url) return null;
-            // Already a direct uc?export URL
-            if (url.includes('drive.google.com/uc?')) return url;
+            let fileId: string | null = null;
             // /file/d/FILE_ID/...
             const fileMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
-            if (fileMatch) return `https://drive.google.com/uc?export=view&id=${fileMatch[1]}`;
+            if (fileMatch) fileId = fileMatch[1];
             // /open?id=FILE_ID
-            const openMatch = url.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
-            if (openMatch) return `https://drive.google.com/uc?export=view&id=${openMatch[1]}`;
+            if (!fileId) {
+              const openMatch = url.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
+              if (openMatch) fileId = openMatch[1];
+            }
+            // uc?export=view&id=FILE_ID
+            if (!fileId) {
+              const ucMatch = url.match(/drive\.google\.com\/uc\?.*id=([a-zA-Z0-9_-]+)/);
+              if (ucMatch) fileId = ucMatch[1];
+            }
+            // Use lh3.googleusercontent.com which works cross-origin
+            if (fileId) return `https://lh3.googleusercontent.com/d/${fileId}`;
             return url;
           }
 
