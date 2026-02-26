@@ -347,10 +347,10 @@ export default function EventProgram() {
                 {(modalImg1 || modalImg2) && (
                   <div className={cn("flex gap-2 mb-2", modalImg1 && modalImg2 ? "" : "")}>
                     {modalImg1 && (
-                      <ImageWithFallback src={modalImg1} alt="" className={cn("rounded-lg object-cover", modalImg2 ? "w-1/2" : "w-full")} style={{ maxHeight: 200 }} />
+                      <ImageWithFallback src={modalImg1} alt="" className={cn("rounded-lg object-contain", modalImg2 ? "w-1/2" : "w-full")} style={{ backgroundColor: '#f5f5f5' }} />
                     )}
                     {modalImg2 && (
-                      <ImageWithFallback src={modalImg2} alt="" className={cn("rounded-lg object-cover", modalImg1 ? "w-1/2" : "w-full")} style={{ maxHeight: 200 }} />
+                      <ImageWithFallback src={modalImg2} alt="" className={cn("rounded-lg object-contain", modalImg1 ? "w-1/2" : "w-full")} style={{ backgroundColor: '#f5f5f5' }} />
                     )}
                   </div>
                 )}
